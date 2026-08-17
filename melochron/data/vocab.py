@@ -87,13 +87,36 @@ def canonical_key(artist: str, track: str) -> str:
     return f"{normalize_field(artist)}{SEP}{normalize_field(track)}"
 
 
-def add_item_keys(df: pd.DataFrame) -> pd.DataFrame:
-    """Attach an ``item_key`` column derived from artist and track."""
-    df = df.copy()
-    artist = df[schema.ARTIST].astype("string").fillna("")
-    track = df[schema.TRACK].astype("string").fillna("")
-    df["item_key"] = [canonical_key(a, t) for a, t in zip(artist, track)]
-    return df
+def add_item_keys(df: pd.DataFrame, recompute: bool = False) -> pd.DataFrame:
+    """Attach an ``item_key`` column derived from artist and track.
+
+    Canonicalization runs over the **distinct** artist/track pairs and is then
+    joined back, rather than once per row. On lastfm-1K that is ~1.1M
+    normalizations instead of ~19M, and since each one runs several regex
+    passes in Python the difference is minutes, not milliseconds.
+
+    Returns ``df`` untouched when the column is already present, so callers can
+    invoke it defensively without paying for it twice. Pass ``recompute=True``
+    after changing the canonicalization rules.
+    """
+    if "item_key" in df.columns and not recompute:
+        return df
+
+    pairs = df[[schema.ARTIST, schema.TRACK]].drop_duplicates()
+    keys = [
+        canonical_key(a, t)
+        for a, t in zip(
+            pairs[schema.ARTIST].astype("string").fillna(""),
+            pairs[schema.TRACK].astype("string").fillna(""),
+        )
+    ]
+    pairs = pairs.assign(item_key=keys)
+
+    out = df.drop(columns=["item_key"], errors="ignore").merge(
+        pairs, on=[schema.ARTIST, schema.TRACK], how="left"
+    )
+    out["item_key"] = out["item_key"].fillna(canonical_key("", ""))
+    return out
 
 
 @dataclass
