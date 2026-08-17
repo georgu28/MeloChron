@@ -152,6 +152,69 @@ def test_full_logits_never_rank_pad_or_oov(model: SASRec) -> None:
     assert torch.isfinite(logits[:, 2:]).all(), "a real item was masked out"
 
 
+def test_forward_with_attention_returns_the_same_hidden_states(model: SASRec) -> None:
+    seq = _seq()
+
+    with torch.no_grad():
+        plain = model(seq)
+        hidden, weights = model.forward_with_attention(seq)
+
+    torch.testing.assert_close(
+        hidden, plain, msg="asking for attention changed the encoding it is supposed to explain"
+    )
+    assert len(weights) == len(model.blocks), "one attention tensor per block was not returned"
+
+
+def test_forward_still_returns_a_bare_tensor(model: SASRec) -> None:
+    # The attention work is additive. If forward() ever starts returning a
+    # tuple, training and every scorer break in a way this catches immediately.
+    assert isinstance(model(_seq()), torch.Tensor), "forward() no longer returns a plain tensor"
+
+
+def test_attention_is_causal_and_normalized(model: SASRec) -> None:
+    seq = _seq()
+
+    with torch.no_grad():
+        _, weights = model.forward_with_attention(seq)
+
+    for block, w in enumerate(weights):
+        assert w.shape == (seq.shape[0], 4, MAX_LEN, MAX_LEN), f"block {block} has the wrong shape"
+
+        rows = w.sum(dim=-1)
+        torch.testing.assert_close(
+            rows,
+            torch.ones_like(rows),
+            msg=f"block {block} attention rows are not a distribution over keys",
+        )
+
+        future = torch.triu(torch.ones(MAX_LEN, MAX_LEN, dtype=torch.bool), diagonal=1)
+        assert w[:, :, future].abs().max().item() == 0.0, (
+            f"block {block} attends to positions that have not happened yet"
+        )
+
+
+def test_attention_gives_padding_no_weight(model: SASRec) -> None:
+    # Left-padded: only the final three columns are real events.
+    seq = torch.zeros((1, MAX_LEN), dtype=torch.long)
+    seq[0, -3:] = torch.tensor([7, 9, 11])
+
+    with torch.no_grad():
+        _, weights = model.forward_with_attention(seq)
+
+    for block, w in enumerate(weights):
+        # The last query position is the one that predicts the next item; it is
+        # the row every insight reads, and it must ignore the padding entirely.
+        last = w[0, :, -1, :]
+        assert last[:, :-3].abs().max().item() == 0.0, (
+            f"block {block} put weight on pad positions when predicting"
+        )
+        torch.testing.assert_close(
+            last.sum(dim=-1),
+            torch.ones(4),
+            msg=f"block {block} lost mass after excluding padding",
+        )
+
+
 def test_negative_sampling_avoids_reserved_ids() -> None:
     uniform = sample_negatives(N_ITEMS, (64, 8))
     assert uniform.min() >= 2 and uniform.max() < N_ITEMS

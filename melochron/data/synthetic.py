@@ -169,12 +169,36 @@ def _unit(v: np.ndarray, axis: int = -1) -> np.ndarray:
     return v / np.clip(np.linalg.norm(v, axis=axis, keepdims=True), 1e-9, None)
 
 
-def generate(config: SyntheticConfig | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+@dataclass
+class TasteSnapshot:
+    """One user's latent taste vector at the start of one simulated month.
+
+    The drift metric in Phase 6 measures movement in *learned* item-vector
+    space. This is the movement it is trying to recover, in the generator's own
+    latent space --- the only ground truth that exists anywhere in the project,
+    since no real listening history comes labelled with why it changed.
+    """
+
+    user_id: str
+    month_index: int
+    ts: int
+    taste: np.ndarray
+
+
+def generate(
+    config: SyntheticConfig | None = None,
+    taste_out: list[TasteSnapshot] | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Generate synthetic events plus the item catalog backing them.
 
     Returns ``(events, catalog)``. ``events`` is in canonical schema form.
     ``catalog`` carries artist, track, and genre tags per item, standing in for
     what ``features/tags.py`` will fetch from Last.fm for real data.
+
+    Pass a list as ``taste_out`` to also collect the per-user, per-month taste
+    vectors as :class:`TasteSnapshot`. It is an out-parameter rather than a
+    third return value because every existing caller unpacks a 2-tuple, and a
+    validation hook is not worth breaking them over.
     """
     cfg = config or SyntheticConfig()
     rng = np.random.default_rng(cfg.seed)
@@ -243,8 +267,11 @@ def generate(config: SyntheticConfig | None = None) -> tuple[pd.DataFrame, pd.Da
         ts = cfg.start_ts + int(rng.integers(0, month_s))
         recent: list[int] = []
 
-        for _ in range(cfg.n_months):
+        for month_index in range(cfg.n_months):
             taste = _unit(taste + cfg.drift_scale * rng.normal(size=cfg.latent_dim))
+
+            if taste_out is not None:
+                taste_out.append(TasteSnapshot(user_id, month_index, int(ts), taste.copy()))
 
             # A user reaches into a bounded library in any given month. This is
             # what produces realistic repeat rates: without it, sampling over
