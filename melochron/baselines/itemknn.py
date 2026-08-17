@@ -40,8 +40,30 @@ class ItemKNNScorer:
         self.recent_n = recent_n
         self.sim: sparse.csr_matrix | None = None
 
+    def _fold(self, rows: list[np.ndarray], cols: list[np.ndarray]) -> sparse.csr_matrix:
+        """Fold a batch of co-occurrence pairs into a symmetric CSR."""
+        r = np.concatenate(rows)
+        c = np.concatenate(cols)
+        # Symmetrize: co-occurrence is an undirected relation here.
+        return sparse.coo_matrix(
+            (
+                np.ones(len(r) * 2, dtype=np.float32),
+                (np.concatenate([r, c]), np.concatenate([c, r])),
+            ),
+            shape=(self.vocab_size, self.vocab_size),
+        ).tocsr()
+
     def fit(self, items_list: list[np.ndarray], times_list: list[np.ndarray]) -> ItemKNNScorer:
-        rows, cols = [], []
+        # Folded in chunks rather than built in one allocation. On lastfm-1K the
+        # complete pair list is ~19M events x 5 lags, doubled for symmetry:
+        # ~190M entries, several GB of COO before it ever reaches CSR. Folding
+        # every `flush_pairs` bounds the peak and costs only a few sparse adds,
+        # which deduplicate as they go.
+        flush_pairs = 20_000_000
+        co: sparse.csr_matrix | None = None
+        rows: list[np.ndarray] = []
+        cols: list[np.ndarray] = []
+        pending = 0
 
         for items, ts in zip(items_list, times_list):
             if len(items) < 2:
@@ -56,21 +78,21 @@ class ItemKNNScorer:
                 if ok.any():
                     rows.append(a[ok])
                     cols.append(b[ok])
+                    pending += int(ok.sum())
 
-        if not rows:
+            if pending >= flush_pairs:
+                chunk = self._fold(rows, cols)
+                co = chunk if co is None else co + chunk
+                rows, cols, pending = [], [], 0
+
+        if rows:
+            chunk = self._fold(rows, cols)
+            co = chunk if co is None else co + chunk
+
+        if co is None:
             self.sim = sparse.csr_matrix((self.vocab_size, self.vocab_size), dtype=np.float32)
             return self
 
-        r = np.concatenate(rows)
-        c = np.concatenate(cols)
-        # Symmetrize: co-occurrence is an undirected relation here.
-        co = sparse.coo_matrix(
-            (
-                np.ones(len(r) * 2, dtype=np.float32),
-                (np.concatenate([r, c]), np.concatenate([c, r])),
-            ),
-            shape=(self.vocab_size, self.vocab_size),
-        ).tocsr()
         co.sum_duplicates()
 
         # Cosine normalization over co-occurrence mass.
