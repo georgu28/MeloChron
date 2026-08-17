@@ -72,14 +72,16 @@ paper.
 Item representation is the only thing that changes between these rows. Same
 architecture, same data, same harness.
 
-| slice | n | id | text_frozen (names only) |
-|---|---|---|---|
-| overall | 5,334 | **0.2553** | 0.1376 |
-| repeat | 3,898 | **0.2804** | 0.1632 |
-| novel | 1,436 | **0.1873** | 0.0682 |
-| cold_user | 570 | **0.2386** | 0.1754 |
-| **cold_item** | 368 | **0.0000** | **0.2500** |
-| **cold_start** | 79 | **0.0000** | **0.1392** |
+| slice | n | id | text (names only) | text (+ genre tags) |
+|---|---|---|---|---|
+| overall | 5,334 | **0.2553** | 0.1376 | 0.1474 |
+| repeat | 3,898 | **0.2804** | 0.1632 | 0.1750 |
+| novel | 1,436 | **0.1873** | 0.0682 | 0.0724 |
+| cold_user | 570 | **0.2386** | 0.1754 | 0.1807 |
+| **cold_item** | 368 | **0.0000** | 0.2500 | **0.2745** |
+| **cold_start** | 79 | **0.0000** | 0.1392 | 0.0886 |
+
+Tag coverage in the third column is 98.3% of items, from 20,191 artists.
 
 **The `0.0000` is a coverage statement, not a model comparison.** With learned
 per-ID embeddings, a track absent from training has no row in the item table. It
@@ -99,6 +101,23 @@ defending.
 the text matrix is frozen and only the 384->128 projection and the transformer
 blocks train. A 47x smaller trainable model buys the ability to score unseen
 items and pays for it on seen ones. That trade is the finding, not a footnote.
+
+**Genre tags barely moved ranking quality, and that is the most interesting
+result here.** Adding tags to 98.3% of items improved training loss
+substantially (3.65 -> 3.16 at matched epochs) but moved HR@10 by only ~7%
+relative on most slices, and on `cold_start` it went *down*, 0.1392 to 0.0886.
+That last figure is 11 hits versus 7 out of 79, and HR@20 is a wash
+(0.2532 vs 0.2405), so the honest statement is **no reliable difference**, not
+a regression.
+
+The likely mechanism is the tagging strategy itself. Tags were fetched per
+*artist*, so every track by an artist gets identical text. That sharpens the
+separation between artists and destroys discrimination *within* an artist, and
+a large share of next-track prediction is choosing among tracks by an artist
+you are already listening to. Lower training loss with flat ranking quality is
+what you would expect if the model got better at a distinction that the metric
+does not reward. Per-track tags would test this directly and cost 8.5x more
+requests.
 
 **Neither variant is the answer alone.** A deployed system wants ID embeddings
 for catalog it knows and text for everything else.
