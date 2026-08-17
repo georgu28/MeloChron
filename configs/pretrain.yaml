@@ -1,0 +1,39 @@
+# Baseline pretraining config: random-init ID embeddings, time-aware.
+#
+# Sized for a 6 GB card. The binding constraint is the output layer, not the
+# encoder: at B=128, L=200, V=50k, full fp32 logits would be ~5.12 GB for the
+# tensor alone and OOM before activations. With 512 sampled negatives it is
+# ~52 MB. Evaluation still ranks against the entire catalog, because that is
+# cheap when only the final position is scored.
+
+variant: id            # id | text_frozen | text_finetuned
+d_model: 128
+n_heads: 2
+n_blocks: 2
+max_len: 200
+dropout: 0.2
+use_time: true
+
+epochs: 20
+batch_size: 128
+lr: 0.001
+weight_decay: 0.01
+warmup_frac: 0.05
+grad_clip: 5.0
+
+n_negatives: 512
+loss: sampled_softmax
+# Negatives drawn proportional to count**0.75 rather than uniformly. Uniform
+# negatives from a long-tailed catalog are almost always obscure, so a model
+# trained on them is never asked to discriminate among the popular items it
+# will actually be ranking at evaluation time.
+popularity_negatives: true
+
+# Disjoint windows: each event is a prediction target exactly once per epoch.
+# Halving this doubles supervision but duplicates targets, which biases the
+# effective sample weighting toward users with the longest histories.
+stride: null
+
+patience: 3
+seed: 0
+eval_batch_size: 128
