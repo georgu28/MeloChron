@@ -106,13 +106,16 @@ def load(path: str | Path, device: torch.device | str = "cpu", name: str = "sasr
     # construct the right module, and load_state_dict fills in the values.
     text_vectors = None
     if config.get("variant", "id") != "id":
-        key = "items.text_vectors"
-        if key not in payload["model"]:
+        # The buffer sits at items.text_vectors for the text variants and at
+        # items.text.text_vectors for the hybrid, which nests the text module.
+        # Searching by suffix keeps this working if the nesting changes again.
+        keys = [k for k in payload["model"] if k.endswith("text_vectors")]
+        if not keys:
             raise ValueError(
-                f"config says variant={config['variant']!r} but the checkpoint has no "
-                f"{key!r}; the artifact and its config disagree"
+                f"config says variant={config['variant']!r} but the checkpoint contains no "
+                "*text_vectors buffer; the artifact and its config disagree"
             )
-        text_vectors = torch.zeros_like(payload["model"][key])
+        text_vectors = torch.zeros_like(payload["model"][keys[0]])
 
     model, head, scorer = build_scorer(
         n_items=len(vocab),

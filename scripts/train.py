@@ -85,7 +85,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--skip-baselines", action="store_true")
     # Config overrides
-    ap.add_argument("--variant", choices=["id", "text_frozen", "text_finetuned"])
+    ap.add_argument("--variant", choices=["id", "text_frozen", "text_finetuned", "hybrid"])
     ap.add_argument("--text-vectors", type=Path, help=".npy from scripts/build_embeddings.py")
     ap.add_argument("--epochs", type=int)
     ap.add_argument("--batch-size", type=int)
