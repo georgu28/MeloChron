@@ -35,7 +35,7 @@ from melochron.baselines.repeat import RepeatScorer
 from melochron.data import sessions, splits, synthetic, vocab
 from melochron.eval import protocol, report
 from melochron.models.scorer import build_scorer
-from melochron.train.loop import Trainer, TrainConfig
+from melochron.train.loop import TrainConfig, Trainer
 
 
 def load_events(args) -> pd.DataFrame:
@@ -175,8 +175,10 @@ def main(argv: list[str] | None = None) -> int:
         use_time=cfg.use_time,
     )
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"device {args.device} | variant {cfg.variant} | use_time {cfg.use_time} | "
-          f"{n_params / 1e6:.2f}M trainable params")
+    print(
+        f"device {args.device} | variant {cfg.variant} | use_time {cfg.use_time} | "
+        f"{n_params / 1e6:.2f}M trainable params"
+    )
 
     counts = counts_from_sequences(fit_seqs.items, len(vc))
     run_name = args.name or f"{cfg.variant}{'' if cfg.use_time else '-notime'}"

@@ -65,7 +65,7 @@ def download(url: str, target: Path, expected: int | None = None) -> Path:
         print(f"resuming from {_human(have)}")
 
     started = time.time()
-    with urllib.request.urlopen(request) as response:  # noqa: S310 - fixed https URL
+    with urllib.request.urlopen(request) as response:
         if have and response.status != 206:
             print("server ignored Range; restarting from zero")
             have = 0
@@ -111,9 +111,7 @@ def extract(archive: Path, dest: Path) -> Path:
         wanted = [m for m in members if Path(m.name).name == TSV_NAME]
         if not wanted:
             names = ", ".join(sorted(Path(m.name).name for m in members)[:10])
-            raise FileNotFoundError(
-                f"{TSV_NAME} not found in {archive}. Archive contains: {names}"
-            )
+            raise FileNotFoundError(f"{TSV_NAME} not found in {archive}. Archive contains: {names}")
 
         for member in wanted + [m for m in members if m.name.lower().endswith(".txt")]:
             # Flatten: the archive nests everything under lastfm-dataset-1K/.

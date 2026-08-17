@@ -99,10 +99,11 @@ class SlicedResult:
     novel: dict[str, float] = field(default_factory=dict)
     cold_user: dict[str, float] = field(default_factory=dict)
     cold_item: dict[str, float] = field(default_factory=dict)
+    cold_start: dict[str, float] = field(default_factory=dict)
 
     def as_rows(self, ks: tuple[int, ...] = DEFAULT_KS) -> list[dict]:
         rows = []
-        for slice_name in ("overall", "repeat", "novel", "cold_user", "cold_item"):
+        for slice_name in ("overall", "repeat", "novel", "cold_user", "cold_item", "cold_start"):
             metrics = getattr(self, slice_name)
             if metrics and metrics.get("n", 0) > 0:
                 rows.append({"model": self.name, "slice": slice_name, **metrics})
@@ -129,6 +130,17 @@ def evaluate_slices(
     over the full frame rather than over training events alone; built from
     train, every in-vocab target is train-seen by construction and this slice
     silently empties.
+
+    ``cold_start`` is the intersection ``cold_item & ~is_repeat``, and it is the
+    slice the transfer claim actually rests on. ``cold_item`` alone is not:
+    evaluation context legitimately includes a user's earlier test-period
+    plays, so a user can already have played a track the model never trained
+    on. On lastfm-1K that is most of ``cold_item``, which is why a pure repeat
+    baseline scores well there while a train-fitted co-occurrence model scores
+    zero. Both are behaving correctly; the slice was measuring two different
+    populations at once. ``cold_start`` separates out the case where the model
+    has never trained on the item *and* the user has never played it, which is
+    the situation a genuinely new track is in.
     """
     result = SlicedResult(name=name)
     result.overall = compute(ranks, ks)
@@ -138,4 +150,5 @@ def evaluate_slices(
         result.cold_user = compute(ranks[is_cold_user], ks)
     if is_cold_item is not None:
         result.cold_item = compute(ranks[is_cold_item], ks)
+        result.cold_start = compute(ranks[is_cold_item & ~is_repeat], ks)
     return result

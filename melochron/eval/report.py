@@ -16,14 +16,15 @@ import pandas as pd
 from melochron.eval.metrics import DEFAULT_KS, SlicedResult
 
 #: Order slices so the honest ones sit next to the flattering one.
-SLICE_ORDER = ["overall", "repeat", "novel", "cold_user", "cold_item"]
+SLICE_ORDER = ["overall", "repeat", "novel", "cold_user", "cold_item", "cold_start"]
 
 SLICE_NOTES = {
     "overall": "all test instances; dominated by repeats",
     "repeat": "target already in the user's history",
     "novel": "target never played by this user before",
     "cold_user": "user held out of training entirely",
-    "cold_item": "target in vocabulary but absent from training",
+    "cold_item": "target absent from training, but the user may know it already",
+    "cold_start": "absent from training AND never played by this user: the real transfer test",
 }
 
 
