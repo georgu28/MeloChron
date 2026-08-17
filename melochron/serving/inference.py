@@ -107,13 +107,65 @@ class Recommender:
             return RecommendationResult([], 0.0, 0, 0, cold_start=True)
 
         scores = self.scorer.score([ids], [times])[0]
+        return self._rank(scores, ids, coverage, k=k, exclude_history=exclude_history)
 
+    def recommend_batch(
+        self,
+        histories: list[list[tuple[str, str, int]]],
+        k: int = 20,
+        exclude_history: bool = False,
+    ) -> list[RecommendationResult]:
+        """Score several histories in one forward pass.
+
+        Not a convenience loop: :meth:`SASRecScorer.score` materialises the
+        whole ``[n_items, d_model]`` item table once per call, and for a
+        projected text representation that projection is the dominant cost of a
+        single request. Scoring n histories together pays it once instead of n
+        times, so the per-request cost of a batch of 8 is far below 8x the cost
+        of one.
+
+        Empty histories keep their slot in the returned list rather than being
+        dropped, so the caller can zip results back to requests positionally.
+        """
+        encoded = [self.encode_history(h) for h in histories]
+        results = [RecommendationResult([], 0.0, 0, 0, cold_start=True) for _ in histories]
+
+        live = [i for i, (ids, _, _) in enumerate(encoded) if len(ids)]
+        if not live:
+            return results
+
+        scores = self.scorer.score([encoded[i][0] for i in live], [encoded[i][1] for i in live])
+        for row, i in enumerate(live):
+            ids, _, coverage = encoded[i]
+            results[i] = self._rank(
+                scores[row], ids, coverage, k=k, exclude_history=exclude_history
+            )
+        return results
+
+    def _rank(
+        self,
+        scores: np.ndarray,
+        ids: np.ndarray,
+        coverage: float,
+        k: int,
+        exclude_history: bool,
+    ) -> RecommendationResult:
+        """Turn one row of catalog scores into a ranked result.
+
+        Copies before masking. In the batched path ``scores`` is a view into
+        the scorer's output array, and writing ``-inf`` through it would edit
+        data the caller still owns --- harmless today because each row is read
+        once, and exactly the kind of aliasing bug that stops being harmless
+        the moment someone reuses the matrix.
+        """
+        scores = scores.copy()
         scores[PAD_ID] = -np.inf
         scores[OOV_ID] = -np.inf
         if exclude_history:
             seen = ids[ids >= FIRST_ITEM_ID]
             scores[seen] = -np.inf
 
+        k = max(1, min(k, len(scores)))
         top = np.argpartition(-scores, min(k, len(scores) - 1))[:k]
         top = top[np.argsort(-scores[top])]
 
