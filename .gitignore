@@ -41,6 +41,11 @@ node_modules/
 # Local tooling config, not project code
 .claude/
 
+# Working notes kept out of history on purpose. The reasoning that matters is
+# preserved in the commit messages.
+COORDINATION.md
+REVIEW-*.md
+
 # OS
 Thumbs.db
 .DS_Store
