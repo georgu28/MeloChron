@@ -24,6 +24,9 @@ import sys
 import time
 from pathlib import Path
 
+import pandas as pd
+
+from melochron import schema
 from melochron.baselines.itemknn import ItemKNNScorer
 from melochron.baselines.popularity import PopularityScorer, counts_from_sequences
 from melochron.baselines.repeat import RepeatScorer
@@ -37,6 +40,14 @@ def load_events(args):
             synthetic.SyntheticConfig(n_users=args.users or 50, seed=args.seed)
         )
         return events
+    if args.data == "parquet":
+        # Preferred path: scripts/build_dataset.py already parsed, filtered and
+        # sessionized. Re-parsing the 2.4 GB TSV per run costs ~70s for nothing.
+        events = pd.read_parquet(args.path)
+        if args.users:
+            keep = sorted(events[schema.USER].unique())[: args.users]
+            events = events[events[schema.USER].isin(keep)].reset_index(drop=True)
+        return events
     if args.data == "lastfm1k":
         return lastfm.read_lastfm1k(args.path, users=args.users, limit=args.limit)
     if args.data == "spotify":
@@ -46,8 +57,10 @@ def load_events(args):
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--data", choices=["synthetic", "lastfm1k", "spotify"], default="synthetic")
-    ap.add_argument("--path", type=Path, help="corpus directory (lastfm1k / spotify)")
+    ap.add_argument(
+        "--data", choices=["synthetic", "parquet", "lastfm1k", "spotify"], default="synthetic"
+    )
+    ap.add_argument("--path", type=Path, help="parquet cache, or corpus dir for raw parsing")
     ap.add_argument("--users", type=int, default=None, help="cap on distinct users")
     ap.add_argument("--limit", type=int, default=None, help="cap on raw rows (lastfm1k)")
     ap.add_argument("--min-count", type=int, default=5, help="vocabulary play-count floor")
