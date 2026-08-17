@@ -1,0 +1,46 @@
+# Data (never committed; see README for how to fetch).
+#
+# Written as `data/*` rather than `data/` deliberately. Git will not descend
+# into an excluded directory, so a plain `data/` makes every negation below
+# silently dead: "it is not possible to re-include a file if a parent directory
+# of that file is excluded." `data/*` excludes the contents while leaving the
+# directory itself traversable, which is what lets the tag cache through.
+data/*
+!data/.gitkeep
+
+# The Last.fm tag cache IS committed. It represents tens of thousands of
+# rate-limited requests at ~4 req/s, so a fresh clone that silently refetched it
+# would cost hours.
+!data/tags/
+
+# Model artifacts and caches
+*.pt
+*.pth
+*.npy
+*.npz
+artifacts/
+.cache/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Node (Phase 6)
+node_modules/
+.next/
+
+# Local tooling config, not project code
+.claude/
+
+# OS
+Thumbs.db
+.DS_Store
