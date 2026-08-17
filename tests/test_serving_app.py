@@ -279,3 +279,59 @@ def test_latency_separates_queueing_from_inference(client):
     assert channels["inference"]["p50_ms"] > 0
     # Request time contains inference time by construction.
     assert channels["request"]["p95_ms"] >= channels["inference"]["p50_ms"]
+
+
+# ------------------------------------------------------- context / sample
+
+
+def test_sample_history_is_fully_in_catalog(client):
+    """The sample is the control the cold-start signal is read against, so it
+    has to land at full coverage or it teaches the wrong thing."""
+    sample = client.get("/api/sample?n=25").json()
+    assert len(sample["history"]) == 25
+
+    body = client.post("/api/recommend", json={"history": sample["history"]}).json()
+    assert body["coverage"]["coverage"] == pytest.approx(1.0)
+    assert body["coverage"]["cold_start"] is False
+
+
+def test_context_is_omitted_unless_asked_for(client):
+    body = client.post("/api/recommend", json={"history": inline_history(10)}).json()
+    assert body["context"] is None
+
+
+def test_context_returns_the_window_that_was_scored(client):
+    history = inline_history(12)
+    body = client.post(
+        "/api/recommend", json={"history": history, "include_context": True}
+    ).json()
+
+    context = body["context"]
+    assert len(context) == 12
+    assert [c["ts"] for c in context] == sorted(c["ts"] for c in context)
+    assert all(c["known"] for c in context)
+    assert context[0]["track"] == history[0]["track"]
+
+
+def test_context_marks_unknown_plays_individually(client):
+    """Coverage says how much was recognised; context says which parts."""
+    history = inline_history(6, known=True) + [
+        {"artist": "Nobody At All", "track": "Untracked", "ts": BASE_TS + 9_000}
+    ]
+    context = client.post(
+        "/api/recommend", json={"history": history, "include_context": True}
+    ).json()["context"]
+
+    assert [c["known"] for c in context] == [True] * 6 + [False]
+
+
+def test_context_is_capped_at_the_model_window(client):
+    """A long history must not return more context than the model read."""
+    max_len = client.get("/api/models").json()["models"][0]["max_len"]
+    body = client.post(
+        "/api/recommend",
+        json={"history": inline_history(max_len + 40), "include_context": True},
+    ).json()
+
+    assert len(body["context"]) == max_len
+    assert body["coverage"]["history_length"] == max_len

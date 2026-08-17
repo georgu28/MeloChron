@@ -27,6 +27,20 @@ class Play(BaseModel):
     ts: int = Field(gt=0, description="Unix timestamp in seconds, UTC")
 
 
+class ContextPlay(BaseModel):
+    """One play from the window the model conditioned on.
+
+    ``known`` is per-play vocabulary membership. Coverage as a single
+    percentage says how much was recognised but not where the gaps fall, and
+    those are different diagnoses.
+    """
+
+    artist: str
+    track: str
+    ts: int
+    known: bool
+
+
 class RecommendRequest(BaseModel):
     """Either a parsed upload (``job_id``) or an inline history, never both."""
 
@@ -35,6 +49,10 @@ class RecommendRequest(BaseModel):
     job_id: str | None = None
     history: list[Play] | None = Field(default=None, max_length=MAX_INLINE_HISTORY)
     k: int = Field(default=20, ge=1, le=MAX_K)
+    #: Return the scored window alongside the predictions. Off by default
+    #: because it adds up to ``max_len`` rows to a response that most callers
+    #: only want the ranking from.
+    include_context: bool = False
     #: Off by default, matching the evaluation protocol: replaying a known
     #: track is the most common real outcome, so filtering it would make the
     #: product disagree with the metrics. On is the discovery surface.
@@ -103,6 +121,7 @@ class RecommendResponse(BaseModel):
     coverage: Coverage
     model: ModelCard
     inference_ms: float
+    context: list[ContextPlay] | None = None
 
 
 class BatchRecommendResponse(BaseModel):
@@ -124,3 +143,6 @@ class HealthResponse(BaseModel):
     models_loaded: int
     active_model: str | None = None
     error: str | None = None
+    #: Published so the client can reject an oversized file before spending
+    #: minutes uploading it, without hardcoding a second copy of the limit.
+    max_upload_mb: int | None = None

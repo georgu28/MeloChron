@@ -88,6 +88,24 @@ class Recommender:
         matched = int((ids >= FIRST_ITEM_ID).sum())
         return ids, times, matched / len(ids)
 
+    def context(self, history: list[tuple[str, str, int]]) -> list[tuple[str, str, int, bool]]:
+        """The window the model actually conditioned on, with vocabulary membership.
+
+        Exposed because a recommendation is far easier to trust when the input
+        that produced it can be inspected, and because coverage as a single
+        percentage hides *where* the gaps are --- a history that is unknown only
+        in its oldest third is a different situation from one that is unknown
+        throughout.
+
+        Returns the same slice :meth:`encode_history` scores, so the two cannot
+        disagree about what the model saw. This is also the window a Phase 6
+        attention surface would draw weights over.
+        """
+        if not history:
+            return []
+        tail = sorted(history, key=lambda row: row[2])[-self.max_len :]
+        return [(a, t, ts, canonical_key(a, t) in self.vocab.key_to_id) for a, t, ts in tail]
+
     def recommend(
         self,
         history: list[tuple[str, str, int]],

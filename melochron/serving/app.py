@@ -25,6 +25,21 @@ the cores, and p95 degrades much faster than throughput improves. The semaphore
 converts that into an orderly queue, and the queueing time is measured
 separately so the trade stays visible rather than being hidden inside one
 aggregate number.
+
+Running it::
+
+    pip install -e ".[serve]" --extra-index-url https://download.pytorch.org/whl/cpu
+
+    # against a trained artifact
+    MELOCHRON_CHECKPOINT=artifacts/runs/id-real/best.pt \\
+        uvicorn melochron.serving.app:app --port 8000
+
+    # all three ablation variants at once, selectable per request
+    MELOCHRON_CHECKPOINT="id=runs/id/best.pt,frozen=runs/frozen/best.pt" \\
+        uvicorn melochron.serving.app:app --port 8000
+
+    # no checkpoint yet: exercise the request path against an untrained model
+    MELOCHRON_DEV_MODEL=1 uvicorn melochron.serving.app:app --port 8000
 """
 
 from __future__ import annotations
@@ -42,6 +57,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
+from melochron.data.vocab import FIRST_ITEM_ID
 from melochron.serving import registry as registry_mod
 from melochron.serving.jobs import JobState, JobStore
 from melochron.serving.latency import LatencyRecorder, Stopwatch
@@ -49,6 +65,7 @@ from melochron.serving.registry import LoadedModel, ModelRegistry
 from melochron.serving.schemas import (
     BatchRecommendRequest,
     BatchRecommendResponse,
+    ContextPlay,
     Coverage,
     HealthResponse,
     ModelCard,
@@ -167,7 +184,13 @@ def create_app() -> FastAPI:
 
         raise HTTPException(400, "provide either job_id or history")
 
-    def _response(result, model: LoadedModel, keys: set[str], inference_ms: float):
+    def _response(
+        result,
+        model: LoadedModel,
+        keys: set[str],
+        inference_ms: float,
+        context: list[ContextPlay] | None = None,
+    ):
         return RecommendResponse(
             items=[
                 RecommendationOut(
@@ -188,6 +211,7 @@ def create_app() -> FastAPI:
             ),
             model=ModelCard(**model.card()),
             inference_ms=round(inference_ms, 2),
+            context=context,
         )
 
     # ----------------------------------------------------------------- routes
@@ -206,6 +230,7 @@ def create_app() -> FastAPI:
             models_loaded=len(reg.models),
             active_model=reg.active,
             error=reg.error,
+            max_upload_mb=app.state.max_upload_bytes // (1024 * 1024),
         )
 
     @app.get("/api/models")
@@ -284,7 +309,14 @@ def create_app() -> FastAPI:
                         model.recommender.recommend, history, req.k, req.exclude_history
                     )
 
-        return _response(result, model, keys, timer.elapsed_ms)
+        context = None
+        if req.include_context:
+            context = [
+                ContextPlay(artist=a, track=t, ts=ts, known=known)
+                for a, t, ts, known in model.recommender.context(history)
+            ]
+
+        return _response(result, model, keys, timer.elapsed_ms, context)
 
     @app.post("/api/recommend/batch", response_model=BatchRecommendResponse)
     async def recommend_batch(req: BatchRecommendRequest) -> BatchRecommendResponse:
@@ -312,6 +344,31 @@ def create_app() -> FastAPI:
             results=[_response(r, model, k, share) for r, k in zip(results, keysets)],
             inference_ms=round(timer.elapsed_ms, 2),
         )
+
+    @app.get("/api/sample")
+    async def sample(n: int = 30, model: str | None = None) -> dict:
+        """A plausible in-catalog history, so the API can be tried without a file.
+
+        Drawn from the head of the vocabulary, which ``build_vocab`` orders by
+        descending play count --- so this is the popular end of the catalog and
+        will land at full coverage. That makes it the natural control to compare
+        an unfamiliar history against when reading the cold-start signal.
+        """
+        loaded = _model(model)
+        vocab = loaded.recommender.vocab
+        n = max(1, min(n, 200))
+
+        base = 1_700_000_000
+        history = []
+        for offset, item_id in enumerate(range(FIRST_ITEM_ID, min(FIRST_ITEM_ID + n, len(vocab)))):
+            artist, track = vocab.display[item_id] if vocab.display else ("", "")
+            # Gaps vary so the timeline has something to show: mostly
+            # back-to-back plays with the occasional longer break.
+            gap = 210 if offset % 7 else 9_000
+            base += gap
+            history.append({"artist": artist, "track": track, "ts": base})
+
+        return {"history": history, "model": loaded.name}
 
     @app.get("/api/metrics/latency")
     async def metrics_latency() -> dict:
