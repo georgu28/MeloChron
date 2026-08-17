@@ -49,6 +49,9 @@ class TrainConfig:
     n_negatives: int = 512
     loss: str = "sampled_softmax"
     popularity_negatives: bool = True
+    #: One negative set per batch instead of one per position. Required at any
+    #: realistic batch x seq_len on a 6 GB card; see shared_negative_logits.
+    shared_negatives: bool = True
 
     stride: int | None = None
     patience: int = 3
@@ -133,16 +136,34 @@ class Trainer:
         sel_hidden = flat_hidden[keep]
         sel_targets = flat_targets[keep]
 
-        negatives = sample_negatives(
-            n_items=len(self.vocab),
-            shape=(sel_targets.shape[0], self.cfg.n_negatives),
-            device=self.device,
-            counts=self.counts,
-            first_item_id=FIRST_ITEM_ID,
-            generator=self.generator,
-        )
+        if self.cfg.shared_negatives:
+            # One negative set for the whole batch: [K] rather than [B, K].
+            # Per-row negatives need a [B, K, D] embedding gather, and B here is
+            # batch x seq_len because every position is supervised. At
+            # 20,000 x 512 x 128 that is ~5.2 GB for a single intermediate,
+            # which OOMs a 6 GB card. Sharing needs ~41 MB.
+            negatives = sample_negatives(
+                n_items=len(self.vocab),
+                shape=(self.cfg.n_negatives,),
+                device=self.device,
+                counts=self.counts,
+                first_item_id=FIRST_ITEM_ID,
+                generator=self.generator,
+            )
+            positive, negative = self.head.shared_negative_logits(
+                sel_hidden, sel_targets, negatives
+            )
+        else:
+            negatives = sample_negatives(
+                n_items=len(self.vocab),
+                shape=(sel_targets.shape[0], self.cfg.n_negatives),
+                device=self.device,
+                counts=self.counts,
+                first_item_id=FIRST_ITEM_ID,
+                generator=self.generator,
+            )
+            positive, negative = self.head.sampled_logits(sel_hidden, sel_targets, negatives)
 
-        positive, negative = self.head.sampled_logits(sel_hidden, sel_targets, negatives)
         ones = torch.ones(sel_targets.shape[0], dtype=torch.bool, device=self.device)
         return self.loss_fn(positive, negative, ones)
 

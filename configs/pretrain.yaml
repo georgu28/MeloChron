@@ -23,6 +23,11 @@ grad_clip: 5.0
 
 n_negatives: 512
 loss: sampled_softmax
+# One negative set per batch, not per position. Every position of every
+# sequence is supervised, so per-position negatives need a
+# [batch*seq_len, K, d_model] gather: ~5.2 GB at these sizes, which OOMs a 6 GB
+# card. Sharing costs ~41 MB and is numerically identical for a given draw.
+shared_negatives: true
 # Negatives drawn proportional to count**0.75 rather than uniformly. Uniform
 # negatives from a long-tailed catalog are almost always obscure, so a model
 # trained on them is never asked to discriminate among the popular items it

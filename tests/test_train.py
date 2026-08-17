@@ -128,6 +128,40 @@ def test_all_masked_batch_is_finite():
     assert float(loss) == 0.0
 
 
+def test_shared_negatives_match_per_row_negatives(small):
+    """The memory optimization must be exact, not approximate.
+
+    Given the same negative ids, scoring them once for the batch has to produce
+    the same numbers as scoring them per row. If it did not, the cheap path
+    would be a different objective wearing the same name, and the ablation
+    table would be comparing two things.
+    """
+    vc, _ = small
+    _model, head, _ = build_scorer(n_items=len(vc), device="cpu", d_model=16, n_blocks=1)
+    head.eval()
+
+    torch.manual_seed(0)
+    b, k = 7, 11
+    hidden = torch.randn(b, 16)
+    positives = torch.randint(2, len(vc), (b,))
+    negatives = torch.randint(2, len(vc), (k,))
+
+    shared_pos, shared_neg = head.shared_negative_logits(hidden, positives, negatives)
+    per_row_pos, per_row_neg = head.sampled_logits(
+        hidden, positives, negatives.unsqueeze(0).expand(b, k)
+    )
+
+    assert shared_pos.shape == (b, 1)
+    assert shared_neg.shape == (b, k)
+    torch.testing.assert_close(shared_pos, per_row_pos)
+    torch.testing.assert_close(shared_neg, per_row_neg)
+
+
+def test_shared_negatives_are_the_default():
+    """A 6 GB card cannot run the per-row path at a realistic batch size."""
+    assert TrainConfig().shared_negatives is True
+
+
 def test_schedule_warms_up_then_decays():
     total, warmup = 100, 10
     assert cosine_with_warmup(0, total, warmup) < cosine_with_warmup(5, total, warmup)

@@ -115,9 +115,48 @@ class TiedItemScorer(nn.Module):
         ``[B, N]``. Returns ``(positive [B, 1], negative [B, N])`` so the caller
         can concatenate them into a softmax with the positive at index 0, or
         use them in a pairwise loss, without this module deciding which.
+
+        **Memory warning.** Per-row negatives materialize a ``[B, N, D]``
+        embedding tensor. Training scores every position of every sequence, so
+        ``B`` is ``batch x seq_len``: at 128 x 200 with 512 negatives and
+        ``d_model`` 128 that is ~5.2 GB for one intermediate, which OOMs a 6 GB
+        card. Prefer :meth:`shared_negative_logits` for training and keep this
+        for cases that genuinely need a different candidate set per row.
         """
         pos = self.score_candidates(hidden, positive_ids.unsqueeze(1))
         neg = self.score_candidates(hidden, negative_ids)
+        return pos, neg
+
+    def shared_negative_logits(
+        self, hidden: Tensor, positive_ids: Tensor, negative_ids: Tensor
+    ) -> tuple[Tensor, Tensor]:
+        """Score positives against **one** negative set shared by the batch.
+
+        ``hidden`` is ``[B, D]``, ``positive_ids`` ``[B]``, ``negative_ids``
+        ``[K]``. Returns ``(positive [B, 1], negative [B, K])``.
+
+        The memory difference is the reason this exists. Per-row negatives need
+        a ``[B, K, D]`` gather; sharing needs only ``[K, D]`` for the embeddings
+        and ``[B, K]`` for the scores. At ``B=20000, K=512, D=128`` that is
+        ~41 MB instead of ~5.2 GB.
+
+        Sharing correlates the negatives across positions within a batch, which
+        is a real statistical difference, not just an optimization. It is also
+        standard practice in this literature, and the gradient is unbiased in
+        the same sense: every position still sees ``K`` draws from the same
+        sampling distribution. Cheap enough that ``K`` can be raised well past
+        what per-row sampling could afford, which more than repays the
+        correlation.
+        """
+        pos_emb = self.items(positive_ids)  # [B, D]
+        neg_emb = self.items(negative_ids)  # [K, D]
+
+        pos = (hidden * pos_emb).sum(dim=-1, keepdim=True)  # [B, 1]
+        neg = hidden @ neg_emb.t()  # [B, K]
+
+        if self.bias is not None:
+            pos = pos + self.bias[positive_ids].unsqueeze(1)
+            neg = neg + self.bias[negative_ids].unsqueeze(0)
         return pos, neg
 
 
