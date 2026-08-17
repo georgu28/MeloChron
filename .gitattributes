@@ -1,0 +1,9 @@
+# Normalize line endings. Developed on Windows, deployed on Linux.
+* text=auto eol=lf
+
+# Corpora and caches are data, not text to be munged.
+*.tsv binary
+*.parquet binary
+*.npy binary
+*.npz binary
+*.gz binary
