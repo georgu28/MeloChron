@@ -41,8 +41,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--batch-size", type=int, default=256)
     ap.add_argument("--device", default=None)
     ap.add_argument("--fetch-tags", action="store_true")
-    ap.add_argument("--tag-limit", type=int, default=None, help="cap items fetched this run")
+    ap.add_argument(
+        "--tag-mode",
+        choices=["artist", "track"],
+        default="artist",
+        help="artist: ~8.5x fewer requests for the same item coverage, coarser tags",
+    )
+    ap.add_argument("--tag-limit", type=int, default=None, help="cap lookups this run")
     ap.add_argument("--tag-cache", type=Path, default=tags_mod.DEFAULT_CACHE)
+    ap.add_argument("--artist-cache", type=Path, default=tags_mod.DEFAULT_ARTIST_CACHE)
     ap.add_argument("--force", action="store_true")
     args = ap.parse_args(argv)
 
@@ -57,17 +64,31 @@ def main(argv: list[str] | None = None) -> int:
     vc = vocab.build_vocab(events, min_count=args.min_count)
     print(f"vocabulary  {vc.n_items:,} items (min_count={args.min_count})")
 
-    cache = tags_mod.TagCache(args.tag_cache)
-    if args.fetch_tags:
+    track_cache = tags_mod.TagCache(args.tag_cache)
+    artist_cache = tags_mod.TagCache(args.artist_cache)
+
+    if args.fetch_tags and args.tag_mode == "artist":
+        artists = [vc.display[i][0] for i in range(FIRST_ITEM_ID, len(vc))]
+        artist_cache = tags_mod.fetch_artist_tags(
+            artists, cache=artist_cache, limit=args.tag_limit, verbose=True
+        )
+    elif args.fetch_tags:
         items = [
             (vc.id_to_key[i], vc.display[i][0], vc.display[i][1])
             for i in range(FIRST_ITEM_ID, len(vc))
         ]
-        cache = tags_mod.fetch_for_items(items, cache=cache, limit=args.tag_limit, verbose=True)
+        track_cache = tags_mod.fetch_for_items(
+            items, cache=track_cache, limit=args.tag_limit, verbose=True
+        )
 
-    tag_map = {k: v for k, v in cache.data.items() if v}
+    # Track-level tags win where present, so a cheap artist pass can later be
+    # refined for the most-played tracks without refetching anything.
+    tag_map = tags_mod.tags_for_vocab(vc, artist_cache=artist_cache, track_cache=track_cache)
     coverage = text_mod.tag_coverage(vc, tag_map)
-    print(f"tag coverage {coverage:.1%} ({len(tag_map):,} items with at least one tag)")
+    print(
+        f"tag coverage {coverage:.1%} ({len(tag_map):,} items tagged; "
+        f"{len(artist_cache):,} artists / {len(track_cache):,} tracks in cache)"
+    )
 
     # Report it, because a 'text' variant built on 5% tag coverage is a
     # names-only variant wearing a different label, and the ablation table
