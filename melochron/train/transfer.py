@@ -97,9 +97,16 @@ def load_for_catalog(
         )
 
     state = payload["model"]
-    key = "items.text_vectors"
-    if key not in state:
-        raise ValueError(f"checkpoint declares variant {variant!r} but carries no {key!r}")
+    # The text buffer sits at items.text_vectors under the text-only variants
+    # and at items.text.text_vectors under hybrid, which nests the text module.
+    # Matched by suffix so a further nesting change does not silently exclude a
+    # variant that TRANSFERABLE claims to support.
+    text_keys = sorted(k for k in state if k.endswith("text_vectors"))
+    if not text_keys:
+        raise ValueError(
+            f"checkpoint declares variant {variant!r} but carries no *text_vectors buffer"
+        )
+    key = text_keys[0]
 
     d_text_old = state[key].shape[1]
     if text_vectors.shape[1] != d_text_old:
@@ -127,14 +134,41 @@ def load_for_catalog(
         use_time=config["use_time"],
     )
 
-    # Everything except the catalog-shaped table. The new matrix was already
-    # installed by build_scorer and must not be overwritten by the old one.
-    portable = {k: v for k, v in state.items() if k != key}
+    # Everything except the catalog-shaped tensors. The new text matrix was
+    # already installed by build_scorer and must not be overwritten by the old
+    # one, and hybrid adds a second one: its residual is [n_items, d_model],
+    # indexed by the *old* vocabulary, so row 40,112 is a correction learned
+    # about one specific lastfm track.
+    #
+    # Dropping it is not a compromise, it is the designed behaviour. The
+    # residual is zero-initialized precisely so that a row carrying no learned
+    # signal falls back to its pure text vector, which is exactly the right
+    # prior for a catalog this model has never seen. So a zero-shot hybrid
+    # transplant arrives with every residual row at zero and no per-item
+    # correction at all.
+    #
+    # It is tempting to conclude that this makes it equivalent to a zero-shot
+    # text_frozen transplant. It does not, and the difference is the reason the
+    # hybrid variant works: _combine L2-normalizes every row and applies a
+    # learned scale, so its rows all have equal length, while text_frozen's
+    # vary by ~3x. Ranking is a dot product, so that changes the order. It is
+    # the same correction as commit 8109042, where unequal norms alone were
+    # keeping cold items out of the top 10 while their directions were fine.
+    #
+    # Which sets up a prediction worth measuring rather than assuming: on a new
+    # catalog *every* item is cold from the residual's point of view, which is
+    # the regime normalization exists to fix, so a zero-shot hybrid should beat
+    # a zero-shot text_frozen. tests/test_transfer.py pins the mechanism; the
+    # personal-corpus table is where the size of it gets reported.
+    catalog_shaped = {key} | {k for k in state if k.endswith("residual.weight")}
+    portable = {k: v for k, v in state.items() if k not in catalog_shaped}
     missing, unexpected = model.load_state_dict(portable, strict=False)
     if unexpected:
         raise ValueError(f"checkpoint carries tensors this model has no place for: {unexpected}")
-    if missing != [key]:
-        raise ValueError(f"expected only {key!r} to be missing, got {missing}")
+    if set(missing) != catalog_shaped:
+        raise ValueError(
+            f"expected exactly {sorted(catalog_shaped)} to be missing, got {sorted(missing)}"
+        )
 
     # The head bias is [n_items] and belongs to the old catalog. Rebuilt empty
     # rather than carried over, because a per-item prior learned from someone

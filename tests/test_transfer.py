@@ -142,3 +142,58 @@ def test_freeze_encoder_leaves_only_the_item_table_trainable(tmp_path) -> None:
 
     assert not result.model.blocks[0].attn.q_proj.weight.requires_grad, "encoder is still trainable"
     assert result.model.items.text_vectors.requires_grad, "nothing is left to adapt"
+
+
+def test_hybrid_checkpoint_transplants(tmp_path) -> None:
+    """TRANSFERABLE lists hybrid, so the loader has to actually accept one.
+
+    It did not. The text buffer was addressed as the literal key
+    items.text_vectors, and hybrid nests the text module, so the one variant
+    worth deploying was rejected by the module that exists to deploy it. No test
+    covered the path, which is why the suite stayed green.
+    """
+    path, _ = _write_checkpoint(tmp_path, "hybrid")
+    new_text = _text(N_NEW, seed=1)
+    t = transfer.load_for_catalog(str(path), new_text, _vocab(N_NEW, "new"))
+
+    assert t.config["variant"] == "hybrid"
+    assert t.model.n_items == N_NEW
+
+
+def test_transplanted_hybrid_residual_is_entirely_zero(tmp_path) -> None:
+    """The old residual is indexed by the old vocabulary and must not come along.
+
+    Every row zero is also the correct starting state: a row with no learned
+    correction falls back to its pure text vector, which is the only defensible
+    prior for a catalog the model has never seen.
+    """
+    path, original = _write_checkpoint(tmp_path, "hybrid")
+    with torch.no_grad():  # make the source residual non-zero, so carrying it would show
+        original.items.residual.weight.normal_(std=0.1)
+
+    t = transfer.load_for_catalog(str(path), _text(N_NEW, seed=1), _vocab(N_NEW, "new"))
+    residual = t.model.items.residual.weight
+    assert residual.shape == (N_NEW, D_MODEL)
+    assert torch.count_nonzero(residual) == 0
+
+
+def test_zero_shot_hybrid_is_not_text_frozen(tmp_path) -> None:
+    """A zero residual does not reduce hybrid to the text-only variant.
+
+    _combine L2-normalizes each row and applies a learned scale, so hybrid's
+    rows are all the same length while text_frozen's differ by several fold.
+    Scoring is a dot product, so that is a ranking difference, and it is exactly
+    the correction that let cold items compete. Asserted because the opposite is
+    the intuitive reading and it is wrong.
+    """
+    path, _ = _write_checkpoint(tmp_path, "hybrid")
+    t = transfer.load_for_catalog(str(path), _text(N_NEW, seed=1), _vocab(N_NEW, "new"))
+
+    hybrid_rows = t.model.items.item_vectors()[FIRST_ITEM_ID:]
+    text_rows = t.model.items.text.item_vectors()[FIRST_ITEM_ID:]
+
+    hybrid_norms = hybrid_rows.norm(dim=-1)
+    text_norms = text_rows.norm(dim=-1)
+    torch.testing.assert_close(hybrid_norms, torch.full_like(hybrid_norms, hybrid_norms[0].item()))
+    assert text_norms.max() > text_norms.min() * 1.5
+    assert not torch.allclose(hybrid_rows, text_rows)
