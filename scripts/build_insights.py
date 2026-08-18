@@ -115,11 +115,20 @@ def attach_signals(table, positives):
     """
     if "session_id" not in positives.columns:
         return table
+    session_ids = positives["session_id"].to_numpy(dtype="int64")
     for name, (column, aggregate) in SIGNAL_AGGREGATES.items():
         if column not in positives.columns or positives[column].isna().all():
             continue
-        grouped = positives.dropna(subset=[column]).groupby("session_id")[column]
-        stat = aggregate(grouped.astype("float64"))
+        # These arrive as pandas nullable dtypes (Int64, boolean), which do not
+        # convert to float in a groupby. Going through numpy with an explicit
+        # na_value handles both without special-casing either.
+        values = positives[column].to_numpy(dtype="float64", na_value=np.nan)
+        frame = pd.DataFrame({"session_id": session_ids, "value": values}).dropna(
+            subset=["value"]
+        )
+        if frame.empty:
+            continue
+        stat = aggregate(frame.groupby("session_id")["value"])
         table.signals[name] = archetypes.align_signal(
             table, stat.index.to_numpy(dtype="int64"), stat.to_numpy(dtype="float64")
         )
