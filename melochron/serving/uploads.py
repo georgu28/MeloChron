@@ -125,7 +125,9 @@ def safe_extract_zip(archive: Path, dest: Path) -> list[Path]:
 
                 target = dest / name
                 if not _is_within(dest, target):
-                    raise UploadError(f"archive entry {info.filename!r} escapes the upload directory")
+                    raise UploadError(
+                        f"archive entry {info.filename!r} escapes the upload directory"
+                    )
 
                 total += info.file_size
                 if total > MAX_UNCOMPRESSED_BYTES:
@@ -166,9 +168,7 @@ def to_history(df: pd.DataFrame, max_events: int = MAX_RETAINED_EVENTS) -> Parse
 
     history = [
         (str(a), str(t), int(ts))
-        for a, t, ts in zip(
-            ordered[schema.ARTIST], ordered[schema.TRACK], ordered[schema.TS]
-        )
+        for a, t, ts in zip(ordered[schema.ARTIST], ordered[schema.TRACK], ordered[schema.TS])
     ]
 
     stats: dict = {

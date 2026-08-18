@@ -302,9 +302,7 @@ def test_context_is_omitted_unless_asked_for(client):
 
 def test_context_returns_the_window_that_was_scored(client):
     history = inline_history(12)
-    body = client.post(
-        "/api/recommend", json={"history": history, "include_context": True}
-    ).json()
+    body = client.post("/api/recommend", json={"history": history, "include_context": True}).json()
 
     context = body["context"]
     assert len(context) == 12
