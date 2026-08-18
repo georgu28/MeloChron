@@ -49,6 +49,39 @@ def left_pad(
     return torch.from_numpy(out), length
 
 
+def prepare_batch(
+    histories: list[np.ndarray],
+    times: list[np.ndarray],
+    max_len: int,
+    pad_id: int = 0,
+    use_time: bool = True,
+    device: torch.device | str = "cpu",
+) -> tuple[torch.Tensor, torch.Tensor | None]:
+    """Turn variable-length histories into the encoder's ``[B, L]`` inputs.
+
+    Returns the left-padded item ids and, when ``use_time``, the matching time
+    deltas in seconds.
+
+    This exists as a function rather than a method because Phase 6 needs the
+    same conversion and the timestamp rule below must not be reimplemented.
+    Timestamps are padded with the row's **own first timestamp**, not zero: a
+    zero would make the first real event's gap look like fifty years and land it
+    in the largest bucket instead of the "no predecessor" one.
+    """
+    item_ids, length = left_pad(histories, max_len, pad_id)
+    item_ids = item_ids.to(device)
+    if not use_time:
+        return item_ids, None
+
+    ts = np.zeros((len(histories), length), dtype=np.int64)
+    for i, t in enumerate(times):
+        t = np.asarray(t, dtype=np.int64)[-length:]
+        if len(t):
+            ts[i, length - len(t) :] = t
+            ts[i, : length - len(t)] = t[0]
+    return item_ids, deltas_from_timestamps(torch.from_numpy(ts).to(device))
+
+
 class SASRecScorer:
     """Scores the full catalog for a batch of histories.
 
@@ -90,24 +123,14 @@ class SASRecScorer:
 
         for start in range(0, len(histories), self.batch_size):
             stop = min(start + self.batch_size, len(histories))
-            item_ids, length = left_pad(
-                histories[start:stop], self.model.max_len, self.model.pad_id
+            item_ids, deltas = prepare_batch(
+                histories[start:stop],
+                times[start:stop],
+                max_len=self.model.max_len,
+                pad_id=self.model.pad_id,
+                use_time=self.use_time and self.model.time_encoding is not None,
+                device=self.device,
             )
-            item_ids = item_ids.to(self.device)
-
-            deltas = None
-            if self.use_time and self.model.time_encoding is not None:
-                # Pad timestamps with the sequence's own first timestamp rather
-                # than zero: a zero would make the first real event's gap look
-                # like fifty years, landing it in the largest bucket instead of
-                # the "no predecessor" one.
-                ts = np.zeros((stop - start, length), dtype=np.int64)
-                for i, t in enumerate(times[start:stop]):
-                    t = np.asarray(t, dtype=np.int64)[-length:]
-                    if len(t):
-                        ts[i, length - len(t) :] = t
-                        ts[i, : length - len(t)] = t[0]
-                deltas = deltas_from_timestamps(torch.from_numpy(ts).to(self.device))
 
             hidden = self.model.encode_last(item_ids, deltas)
             logits = self.head.full_logits(

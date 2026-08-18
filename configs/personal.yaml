@@ -1,0 +1,59 @@
+# Single-user config: one listener's own export, not a 992-user corpus.
+#
+# Four settings differ from pretrain.yaml, and every one of them is a
+# consequence of n_users == 1 rather than a preference.
+#
+# The architecture is deliberately identical to the pretrained checkpoint's
+# (d_model 128, 2 heads, 2 blocks, max_len 200) so that a from-scratch run and a
+# fine-tuned run are the same model with different initializations. Changing it
+# here would make the transfer table compare two things at once.
+
+variant: id            # id | text_frozen | text_finetuned | hybrid
+d_model: 128
+n_heads: 2
+n_blocks: 2
+# Must match the checkpoint being fine-tuned from: position embeddings are
+# nn.Embedding(max_len, d_model) and do not stretch. Worth knowing that 200 is
+# small here --- 70% of "repeat" targets on this corpus were last played more
+# than 200 events ago, so they are invisible to any scorer at this window.
+max_len: 200
+dropout: 0.2
+use_time: true
+
+# ~40 optimizer steps per epoch at stride 25, against ~750 per epoch on
+# lastfm-1K. Epochs are not comparable units between the two runs; these are
+# raised so that total steps land in the same order of magnitude.
+epochs: 60
+batch_size: 128
+lr: 0.001
+weight_decay: 0.01
+warmup_frac: 0.05
+grad_clip: 5.0
+
+n_negatives: 512
+loss: sampled_softmax
+shared_negatives: true
+# Uniform negatives, unlike the pretraining run. With one listener,
+# counts_from_sequences is *this user's* play counts, so popularity-weighted
+# negatives are drawn from the same sharply concentrated distribution the
+# positives come from. Since sampling does not exclude the positive, the target
+# lands in its own softmax denominator often enough to push its embedding down.
+# The "collision rate is negligible" premise holds at 171,902 items and a
+# population prior; it does not hold at 18,450 items and a personal one.
+popularity_negatives: false
+
+# Overlapping windows. The objection in pretrain.yaml --- that a small stride
+# biases sample weighting toward users with long histories --- cannot apply
+# when there is exactly one user. Without this, the fit split yields ~640
+# windows and 6 steps per epoch, and training stops at initialization noise.
+stride: 25
+
+# Raised with epochs: at 40 steps per epoch, three epochs of no improvement is
+# noise rather than a plateau.
+patience: 8
+seed: 0
+eval_batch_size: 128
+# Validation is re-ranked against the whole catalog every epoch, so this is a
+# per-epoch cost. The test table needs tens of thousands of instances to mean
+# anything; early stopping on NDCG@10 is stable well below that.
+max_val_instances: 2000

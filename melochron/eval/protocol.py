@@ -7,6 +7,7 @@ convention.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -39,16 +40,25 @@ class EvalInstances:
     is_cold_user: np.ndarray
     is_cold_item: np.ndarray
     user_ids: list[str]
+    #: Test-period targets skipped because they were out of vocabulary. They are
+    #: unrankable rather than ranked badly, so they cannot stay in the metric ---
+    #: but a large number here means the metric describes the head of the
+    #: catalog rather than the listening, which the counts alone would hide.
+    oov_targets_dropped: int = 0
 
     def __len__(self) -> int:
         return len(self.targets)
 
     def summary(self) -> dict[str, float]:
+        total = len(self) + self.oov_targets_dropped
         return {
             "instances": float(len(self)),
             "repeat_frac": float(self.is_repeat.mean()) if len(self) else 0.0,
             "cold_user_frac": float(self.is_cold_user.mean()) if len(self) else 0.0,
             "cold_item_frac": float(self.is_cold_item.mean()) if len(self) else 0.0,
+            "oov_targets_dropped": float(self.oov_targets_dropped),
+            "oov_target_frac": float(self.oov_targets_dropped / total) if total else 0.0,
+            "users": float(len(set(self.user_ids))),
         }
 
 
@@ -77,6 +87,18 @@ def build_instances(
     histories, history_times, user_ids = [], [], []
     targets, target_times = [], []
     is_repeat, is_cold_user, is_cold_item = [], [], []
+    oov_dropped = 0
+
+    if len(seqs.user_ids) == 1:
+        # max_per_user is a per-user cap, so on a one-user corpus it silently
+        # becomes the size of the whole evaluation --- the script defaults of
+        # 10-50 would reduce tens of thousands of eligible targets to a table
+        # that looks normal and measures nothing.
+        warnings.warn(
+            f"single-user corpus: max_per_user={max_per_user} caps the entire "
+            "evaluation, and the cold_user slice cannot be populated",
+            stacklevel=2,
+        )
 
     for u, user in enumerate(seqs.user_ids):
         items, times = seqs.items[u], seqs.times[u]
@@ -95,6 +117,7 @@ def build_instances(
             # and every model would score it identically. Excluding it keeps the
             # metric meaningful; the count is reported in the run summary.
             if target == OOV_ID:
+                oov_dropped += 1
                 continue
 
             start = max(0, pos - max_len)
@@ -117,6 +140,7 @@ def build_instances(
         is_cold_user=np.asarray(is_cold_user, dtype=bool),
         is_cold_item=np.asarray(is_cold_item, dtype=bool),
         user_ids=user_ids,
+        oov_targets_dropped=oov_dropped,
     )
 
 

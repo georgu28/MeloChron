@@ -61,9 +61,17 @@ class MultiHeadSelfAttention(nn.Module):
         b, length, _ = x.shape
         return x.view(b, length, self.n_heads, self.d_head).transpose(1, 2)
 
-    def forward(self, x: Tensor, attn_mask: Tensor) -> Tensor:
+    def forward(
+        self, x: Tensor, attn_mask: Tensor, need_weights: bool = False
+    ) -> Tensor | tuple[Tensor, Tensor]:
         """``x`` is ``[B, L, D]``; ``attn_mask`` is ``[B, 1, L, L]``, True where
-        a query position is allowed to see a key position."""
+        a query position is allowed to see a key position.
+
+        With ``need_weights``, also returns the ``[B, n_heads, L, L]`` attention
+        distribution --- the same tensor the output is computed from, not a
+        recomputation. Phase 6 reads it; training never asks for it, so the
+        default keeps the single-tensor return the rest of the model expects.
+        """
         b, length, _ = x.shape
 
         q = self._split_heads(self.q_proj(x))
@@ -77,7 +85,8 @@ class MultiHeadSelfAttention(nn.Module):
 
         out = weights @ v
         out = out.transpose(1, 2).contiguous().view(b, length, -1)
-        return self.resid_dropout(self.out_proj(out))
+        out = self.resid_dropout(self.out_proj(out))
+        return (out, weights) if need_weights else out
 
 
 class FeedForward(nn.Module):
@@ -107,7 +116,14 @@ class Block(nn.Module):
         self.norm_ffn = nn.LayerNorm(d_model)
         self.ffn = FeedForward(d_model, dropout)
 
-    def forward(self, x: Tensor, attn_mask: Tensor) -> Tensor:
+    def forward(
+        self, x: Tensor, attn_mask: Tensor, need_weights: bool = False
+    ) -> Tensor | tuple[Tensor, Tensor]:
+        if need_weights:
+            delta, weights = self.attn(self.norm_attn(x), attn_mask, need_weights=True)
+            x = x + delta
+            return x + self.ffn(self.norm_ffn(x)), weights
+
         x = x + self.attn(self.norm_attn(x), attn_mask)
         return x + self.ffn(self.norm_ffn(x))
 
@@ -192,14 +208,15 @@ class SASRec(nn.Module):
         eye = torch.eye(length, dtype=torch.bool, device=device).view(1, 1, length, length)
         return allowed | eye
 
-    def forward(self, item_ids: Tensor, time_deltas: Tensor | None = None) -> Tensor:
-        """Encode a batch of sequences.
+    def _encode(
+        self, item_ids: Tensor, time_deltas: Tensor | None, need_weights: bool
+    ) -> tuple[Tensor, list[Tensor]]:
+        """The single implementation behind both public encode paths.
 
-        ``item_ids`` is ``[B, L]`` of vocab ids, left-padded with ``pad_id``.
-        ``time_deltas`` is ``[B, L]`` of gaps in seconds from the previous
-        event; pass ``None`` for the position-only ablation.
-
-        Returns ``[B, L, d_model]``, zeroed at padded positions.
+        ``forward`` and ``forward_with_attention`` differ only in what they
+        return. Keeping one body means the attention a visualization reports is
+        provably the attention that produced the hidden states --- two copies of
+        this preamble would be free to drift apart without failing any test.
         """
         if item_ids.dim() != 2:
             raise ValueError(f"expected item_ids of shape [B, L], got {tuple(item_ids.shape)}")
@@ -225,10 +242,44 @@ class SASRec(nn.Module):
         x = x * mask.unsqueeze(-1)
 
         attn_mask = self.build_attention_mask(item_ids)
+        weights: list[Tensor] = []
         for block in self.blocks:
-            x = block(x, attn_mask)
+            if need_weights:
+                x, block_weights = block(x, attn_mask, need_weights=True)
+                weights.append(block_weights)
+            else:
+                x = block(x, attn_mask)
 
-        return self.norm_out(x) * mask.unsqueeze(-1)
+        return self.norm_out(x) * mask.unsqueeze(-1), weights
+
+    def forward(self, item_ids: Tensor, time_deltas: Tensor | None = None) -> Tensor:
+        """Encode a batch of sequences.
+
+        ``item_ids`` is ``[B, L]`` of vocab ids, left-padded with ``pad_id``.
+        ``time_deltas`` is ``[B, L]`` of gaps in seconds from the previous
+        event; pass ``None`` for the position-only ablation.
+
+        Returns ``[B, L, d_model]``, zeroed at padded positions.
+        """
+        hidden, _ = self._encode(item_ids, time_deltas, need_weights=False)
+        return hidden
+
+    def forward_with_attention(
+        self, item_ids: Tensor, time_deltas: Tensor | None = None
+    ) -> tuple[Tensor, list[Tensor]]:
+        """``forward``, plus one ``[B, n_heads, L, L]`` attention tensor per block.
+
+        The hidden states are bit-identical to what ``forward`` returns for the
+        same input, because both go through ``_encode``.
+
+        Two properties of the weights are easy to misread and are the caller's
+        problem to handle. Rows are a distribution over *keys*, so they sum to
+        one along the last axis. And every query position attends to itself with
+        weight 1.0 when it is a pad slot --- ``build_attention_mask`` ORs in the
+        identity to keep the softmax from producing NaN --- so pad rows carry no
+        information and must be dropped, not averaged in.
+        """
+        return self._encode(item_ids, time_deltas, need_weights=True)
 
     def encode_last(self, item_ids: Tensor, time_deltas: Tensor | None = None) -> Tensor:
         """The ``[B, d_model]`` state used to predict the next item.
