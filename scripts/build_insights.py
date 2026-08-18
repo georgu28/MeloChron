@@ -64,23 +64,34 @@ def write_json(path: Path, context: dict, rows: list[dict], summary: dict) -> No
     )
 
 
-def sample_histories(seqs, max_len: int, n_users: int, seed: int = 0):
-    """One held-back history per user: everything except the final play.
+def sample_histories(seqs, max_len: int, n_traces: int, seed: int = 0, min_history: int = 10):
+    """``n_traces`` prediction points, sampled across users *and* across time.
 
-    The last event is withheld so the attention row being read is genuinely
-    predicting something rather than looking at the answer.
+    Sampling one history per user would cap a personal corpus at a single
+    trace, which is the whole insight silently reduced to an anecdote. Sampling
+    cut points instead keeps the count meaningful at any number of users, and
+    on one user it spreads the traces over their listening history.
+
+    Each cut point is a genuine prediction: the history stops strictly before
+    the event being predicted, so the attention row is not looking at its own
+    answer.
     """
     rng = np.random.default_rng(seed)
-    order = rng.permutation(len(seqs.user_ids))[:n_users]
+    eligible = [u for u in range(len(seqs.user_ids)) if len(seqs.items[u]) > min_history]
+    if not eligible:
+        return [], [], []
+
+    picks = rng.choice(eligible, size=n_traces, replace=len(eligible) < n_traces)
     users, histories, times = [], [], []
-    for i in order:
-        items = seqs.items[i][:-1][-max_len:]
-        stamps = seqs.times[i][:-1][-max_len:]
-        if len(items) < 2:
-            continue
-        users.append(seqs.user_ids[i])
-        histories.append(items)
-        times.append(stamps)
+    for u in picks:
+        u = int(u)
+        cut = int(rng.integers(min_history, len(seqs.items[u])))
+        start = max(0, cut - max_len)
+        # Labelled with the cut timestamp: on a single-user corpus every trace
+        # would otherwise carry the same name and be impossible to tell apart.
+        users.append(f"{seqs.user_ids[u]}@{int(seqs.times[u][cut])}")
+        histories.append(seqs.items[u][start:cut])
+        times.append(seqs.times[u][start:cut])
     return users, histories, times
 
 
@@ -98,7 +109,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--max-sessions", type=int, default=archetypes.DEFAULT_MAX_SESSIONS)
     ap.add_argument("--k-min", type=int, default=archetypes.DEFAULT_K_RANGE[0])
     ap.add_argument("--k-max", type=int, default=archetypes.DEFAULT_K_RANGE[1])
-    ap.add_argument("--attention-users", type=int, default=25)
+    ap.add_argument("--attention-traces", type=int, default=50, help="prediction points to trace")
     ap.add_argument("--top-k", type=int, default=attention.DEFAULT_TOP_K)
     ap.add_argument("--min-ms", type=int, default=sessions.DEFAULT_MIN_MS)
     ap.add_argument("--device", type=str, default="cpu")
@@ -173,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # --- attention
     users, histories, times = sample_histories(
-        seqs, artifact.model.max_len, args.attention_users, seed=args.seed
+        seqs, artifact.model.max_len, args.attention_traces, seed=args.seed
     )
     traces = attention.trace(
         artifact.model,

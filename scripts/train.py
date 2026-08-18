@@ -35,6 +35,7 @@ from melochron.baselines.repeat import RepeatScorer
 from melochron.data import sessions, splits, synthetic, vocab
 from melochron.eval import protocol, report
 from melochron.models.scorer import build_scorer
+from melochron.train import transfer
 from melochron.train.loop import TrainConfig, Trainer
 
 
@@ -93,6 +94,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--d-model", type=int, dest="d_model")
     ap.add_argument("--loss", choices=["sampled_softmax", "bpr"])
     ap.add_argument("--no-time", action="store_true", help="position-only ablation")
+    ap.add_argument("--init-from", type=Path, help="pretrained checkpoint to fine-tune from")
+    ap.add_argument("--freeze-encoder", action="store_true", help="adapt the item table only")
     args = ap.parse_args(argv)
 
     cfg = build_config(args)
@@ -161,19 +164,44 @@ def main(argv: list[str] | None = None) -> int:
                 "rebuild embeddings against this vocabulary"
             )
 
-    model, head, scorer = build_scorer(
-        n_items=len(vc),
-        device=args.device,
-        name=f"sasrec-{cfg.variant}" + ("" if cfg.use_time else "-notime"),
-        variant=cfg.variant,
-        text_vectors=text_vectors,
-        d_model=cfg.d_model,
-        n_heads=cfg.n_heads,
-        n_blocks=cfg.n_blocks,
-        max_len=cfg.max_len,
-        dropout=cfg.dropout,
-        use_time=cfg.use_time,
-    )
+    scorer_name = f"sasrec-{cfg.variant}" + ("" if cfg.use_time else "-notime")
+
+    if args.init_from:
+        # Fine-tuning: start from an encoder pretrained on a different catalog
+        # rather than from noise. Only the text variants can do this, and
+        # load_for_catalog raises rather than degrading if asked to try.
+        if text_vectors is None:
+            raise SystemExit("--init-from needs --text-vectors for the new catalog")
+        transplant = transfer.load_for_catalog(
+            str(args.init_from),
+            text_vectors,
+            vc,
+            device=args.device,
+            name=scorer_name,
+            freeze_encoder=args.freeze_encoder,
+        )
+        model, head, scorer = transplant.model, transplant.head, transplant.scorer
+        print(f"initialized from {args.init_from} | {transplant.card()}")
+        # The architecture is the checkpoint's, not the config's; saying so
+        # avoids a report that claims hyperparameters the run did not use.
+        cfg.d_model = transplant.config["d_model"]
+        cfg.n_heads = transplant.config["n_heads"]
+        cfg.n_blocks = transplant.config["n_blocks"]
+        cfg.max_len = transplant.config["max_len"]
+    else:
+        model, head, scorer = build_scorer(
+            n_items=len(vc),
+            device=args.device,
+            name=scorer_name,
+            variant=cfg.variant,
+            text_vectors=text_vectors,
+            d_model=cfg.d_model,
+            n_heads=cfg.n_heads,
+            n_blocks=cfg.n_blocks,
+            max_len=cfg.max_len,
+            dropout=cfg.dropout,
+            use_time=cfg.use_time,
+        )
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(
         f"device {args.device} | variant {cfg.variant} | use_time {cfg.use_time} | "

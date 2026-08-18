@@ -150,10 +150,31 @@ def main(argv: list[str] | None = None) -> int:
         "ranking": "full catalog, pessimistic ties",
         "runtime_s": round(time.time() - started, 1),
     }
-    paths = report.write(results, args.outdir, stem=f"baselines-{args.data}", context=context)
+    notes = {}
+    if len(all_seqs.user_ids) == 1:
+        # Popularity and item-kNN are collaborative: they rank a target by what
+        # *other* people played. With one listener there are no other people, so
+        # a target never played before training has count zero and an all-zero
+        # similarity column. The resulting 0.0000 is the absence of a mechanism,
+        # not a model losing a comparison.
+        context["single_user"] = True
+        notes["novel"] = (
+            "Single-user corpus: popularity and item-kNN carry no collaborative "
+            "signal here, so their zeros are structural rather than a result."
+        )
+        notes["cold_item"] = notes["novel"]
+
+    paths = report.write(
+        results,
+        args.outdir,
+        stem=f"baselines-{args.data}",
+        context=context,
+        n_items=vc.n_items,
+        notes=notes,
+    )
 
     print()
-    print(report.format_markdown(results))
+    print(report.format_markdown(results, n_items=vc.n_items, notes=notes))
     print(f"written: {paths['markdown']}")
     return 0
 

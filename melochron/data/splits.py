@@ -62,6 +62,15 @@ def temporal_split(
     users = np.sort(df[schema.USER].unique())
     rng = np.random.default_rng(seed)
     n_holdout = round(len(users) * holdout_user_frac)
+    if n_holdout >= len(users):
+        # Rounding, not the caller, is usually what does this: on a single-user
+        # corpus any fraction above 0.5 rounds to 1 and takes the only user,
+        # leaving an empty training set that surfaces much later as the
+        # unhelpful "split produced an empty side".
+        raise ValueError(
+            f"holdout_user_frac={holdout_user_frac} would hold out {n_holdout} "
+            f"of {len(users)} users, leaving nothing to train on"
+        )
     holdout = (
         frozenset(str(u) for u in rng.choice(users, size=n_holdout, replace=False))
         if n_holdout

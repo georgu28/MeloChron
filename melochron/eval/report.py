@@ -44,14 +44,35 @@ def format_markdown(
     results: list[SlicedResult],
     ks: tuple[int, ...] = DEFAULT_KS,
     primary_k: int = 10,
+    n_items: int | None = None,
+    notes: dict[str, str] | None = None,
 ) -> str:
-    """One markdown table per slice, models as rows."""
+    """One markdown table per slice, models as rows.
+
+    ``n_items`` is the catalog size. Supplying it prints the chance-level hit
+    rate under each table, which is the only thing that makes HR@k comparable
+    across runs: full-catalog ranking against 18,450 candidates and against
+    171,902 are different questions, and the numbers do not say so themselves.
+
+    ``notes`` attaches an extra caveat to a named slice. Formatting stays dumb;
+    the caller knows things this module cannot, such as whether a zero is a
+    measurement or an artifact of a single-user corpus.
+    """
     df = results_to_frame(results, ks)
     if df.empty:
         return "_no results_\n"
 
     metric_cols = [f"HR@{k}" for k in ks] + [f"NDCG@{primary_k}", f"MRR@{primary_k}"]
+    notes = notes or {}
     out: list[str] = []
+
+    # A slice with no instances is dropped upstream by SlicedResult.as_rows. It
+    # still has to be accounted for: a table that is simply missing cold_user
+    # reads as a shorter report, not as an axis that could not be measured.
+    missing = [s for s in SLICE_ORDER if df[df["slice"] == s].empty]
+    if missing:
+        out.append(f"_Not measurable on this corpus: {', '.join(missing)}._")
+        out.append("")
 
     for slice_name in SLICE_ORDER:
         part = df[df["slice"] == slice_name]
@@ -62,6 +83,9 @@ def format_markdown(
         out.append(f"### {slice_name}  (n = {n:,})")
         out.append("")
         out.append(f"_{SLICE_NOTES.get(slice_name, '')}_")
+        if slice_name in notes:
+            out.append("")
+            out.append(f"_{notes[slice_name]}_")
         out.append("")
         out.append("| model | " + " | ".join(metric_cols) + " |")
         out.append("|" + "---|" * (len(metric_cols) + 1))
@@ -83,6 +107,20 @@ def format_markdown(
         if best == 0:
             out.append("")
             out.append(f"_No baseline scores above zero on this slice at k={primary_k}._")
+        elif has_winner and (scores == 0).any():
+            # One row above a column of exact zeros looks decisive and often is
+            # not: a zero here usually means the scorer had no way to rank the
+            # target at all, which is a coverage statement rather than a loss.
+            zeroed = ", ".join(part.loc[scores == 0, "model"].astype(str))
+            out.append("")
+            out.append(f"_Scores exactly zero at k={primary_k}: {zeroed}. See the note above._")
+
+        if n_items:
+            out.append("")
+            out.append(
+                f"_Chance HR@{primary_k} = {primary_k}/{n_items:,} = "
+                f"{primary_k / n_items:.6f} (full-catalog ranking)._"
+            )
         out.append("")
 
     return "\n".join(out)
@@ -94,6 +132,8 @@ def write(
     stem: str = "results",
     ks: tuple[int, ...] = DEFAULT_KS,
     context: dict | None = None,
+    n_items: int | None = None,
+    notes: dict[str, str] | None = None,
 ) -> dict[str, Path]:
     """Write results as CSV, JSON and markdown.
 
@@ -121,7 +161,7 @@ def write(
         encoding="utf-8",
     )
 
-    md = format_markdown(results, ks)
+    md = format_markdown(results, ks, n_items=n_items, notes=notes)
     if context:
         lines = ["## Run context", ""]
         lines += [f"- **{k}**: {v}" for k, v in context.items()]
