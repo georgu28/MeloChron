@@ -33,10 +33,14 @@ Ties are broken **pessimistically**. `MRR@k` is the truncated variant.
 | cold_user | 570 | 0.0035 | 0.1912 | 0.2018 | **0.2386** |
 | cold_item | 368 | 0.0000 | **0.3913** | 0.0000 | 0.0000 |
 
-**Slices.** `repeat` = the user has played this track before. `novel` = they
-have not. `cold_user` = the user was held out of training entirely, which is
-the situation a new uploader is in. `cold_item` = the track is absent from the
-training period.
+**Metric:** HR@10 (hit rate in top 10 recommendations). Bold marks the best result per row, except `Cold item`: SASRec structurally can't score there (no ID for unseen tracks), so repeat wins by default, not by skill.
+
+**Slice definitions:**
+- `Overall`: all test cases combined
+- `Repeat`: user has played this track before
+- `Novel`: user has not played this track before
+- `Cold user`: user held out entirely from training
+- `Cold item`: track absent from the training period
 
 ### Reading this honestly
 
