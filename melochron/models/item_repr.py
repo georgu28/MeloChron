@@ -36,17 +36,73 @@ class ItemRepresentation(nn.Module):
     """Maps item ids to vectors, and exposes the full table for weight tying.
 
     Subclasses set ``n_items`` and ``d_model`` and implement
-    :meth:`item_vectors`; lookup is defined in terms of it so the two can never
-    disagree, which is what keeps the output head genuinely tied.
+    :meth:`compute_item_vectors`; lookup and the public :meth:`item_vectors` are
+    both defined in terms of it so the two can never disagree, which is what
+    keeps the output head genuinely tied.
+
+    Between those two sits a cache, and it exists because of a measured
+    regression rather than a guess. For a computed representation the table is a
+    ``[n_items, d_text] x [d_text, d_model]`` product --- 171,904 x 384 x 128 for
+    the pretrained catalog. Evaluation calls
+    :meth:`~melochron.models.scorer.SASRecScorer.score` once for thousands of
+    instances and hoists that product out of its batch loop, so it is amortized
+    to nothing. **Serving calls it once per request**, where the same hoist
+    amortizes over a single history and the projection becomes the whole cost:
+    the hybrid artifact measured 538 ms p50 per recommendation against the id
+    variant's 8.2 ms, a 66x gap that is entirely this matrix.
+
+    :meth:`freeze_item_vectors` materializes it once for a model whose weights
+    are done moving. The staleness risk that would otherwise make a cache like
+    this a bug is closed structurally: :meth:`train` and :meth:`_apply` both
+    drop it, so entering training mode or moving to another device invalidates
+    it rather than serving vectors that no longer match the parameters.
     """
 
     n_items: int
     d_model: int
     pad_id: int
 
+    #: Set only by :meth:`freeze_item_vectors`. ``None`` means recompute on
+    #: demand, which is the default and the only state training ever sees.
+    _frozen_vectors: Tensor | None = None
+
     @abstractmethod
+    def compute_item_vectors(self) -> Tensor:
+        """The whole table, ``[n_items, d_model]``, computed from parameters."""
+
     def item_vectors(self) -> Tensor:
-        """The whole table, ``[n_items, d_model]``."""
+        """The whole table, from cache when one has been frozen."""
+        frozen = self._frozen_vectors
+        return self.compute_item_vectors() if frozen is None else frozen
+
+    def freeze_item_vectors(self) -> Tensor:
+        """Materialize the table once and serve that copy until invalidated.
+
+        For inference only. Detached, so a frozen table can never be a path
+        gradient flows along, and returned for a caller that wants to hold it.
+        """
+        with torch.no_grad():
+            self._frozen_vectors = self.compute_item_vectors().detach()
+        return self._frozen_vectors
+
+    def thaw_item_vectors(self) -> None:
+        """Drop any frozen table, returning to computing on demand."""
+        self._frozen_vectors = None
+
+    def train(self, mode: bool = True) -> ItemRepresentation:
+        # A frozen table asserts the parameters behind it are done moving, which
+        # training mode contradicts. Dropping it here is what makes the
+        # fine-tuning path (load a checkpoint, freeze, then keep training) safe
+        # without the caller having to remember.
+        if mode:
+            self.thaw_item_vectors()
+        return super().train(mode)
+
+    def _apply(self, *args, **kwargs):
+        # .to(), .cuda() and .float() all land here. A table frozen before the
+        # move would be left on the old device or in the old dtype.
+        self.thaw_item_vectors()
+        return super()._apply(*args, **kwargs)
 
     def forward(self, item_ids: Tensor) -> Tensor:
         """Look up ``item_ids`` of any shape, returning ``[..., d_model]``."""
@@ -67,7 +123,15 @@ class IdEmbedding(ItemRepresentation):
         with torch.no_grad():
             self.embedding.weight[pad_id].zero_()
 
-    def item_vectors(self) -> Tensor:
+    def compute_item_vectors(self) -> Tensor:
+        return self.embedding.weight
+
+    def freeze_item_vectors(self) -> Tensor:
+        """No-op: the table is already a parameter, so there is nothing to
+        precompute and a cache would only be a second copy of it.
+
+        This is why the id variant's 8.2 ms was never the number in danger.
+        """
         return self.embedding.weight
 
     def forward(self, item_ids: Tensor) -> Tensor:
@@ -128,10 +192,10 @@ class ProjectedTextEmbedding(ItemRepresentation):
         self.projection = nn.Linear(d_text, d_model, bias=False)
         nn.init.normal_(self.projection.weight, std=0.02)
 
-    def item_vectors(self) -> Tensor:
+    def compute_item_vectors(self) -> Tensor:
         """``[n_items, d_model]``.
 
-        Recomputed on every call. That is a real cost at full-catalog eval
+        Recomputed on every call unless the base class has a frozen table. That is a real cost at full-catalog eval
         (``n_items x d_text x d_model`` per batch), which is why
         :meth:`melochron.models.heads.TiedItemScorer.full_logits` accepts a
         precomputed matrix and the scorer hoists this out of its batch loop.
@@ -141,6 +205,23 @@ class ProjectedTextEmbedding(ItemRepresentation):
         # zero in stays zero out, but this is asserted rather than assumed
         # because a later bias=True would break it silently.
         return vectors
+
+    def forward(self, item_ids: Tensor) -> Tensor:
+        """Look up ``item_ids``, projecting only the rows asked for.
+
+        The base class would build the whole table and index into it. That is
+        the same arithmetic in the wrong order, and the order is worth 860x
+        here: projecting a 200-play history is ``200 x 384 x 128``, while
+        projecting the catalog first is ``171,904 x 384 x 128`` to then discard
+        99.9% of it. Because the projection is an unbiased ``nn.Linear``,
+        gathering before it and gathering after it are equal --- indexing rows
+        commutes with a right multiplication --- so this is free to do.
+
+        It was costing 166 ms of every hybrid recommendation, and it is paid on
+        every training step of the text variants too, where the sequence and its
+        sampled negatives are both looked up this way.
+        """
+        return self.projection(self.text_vectors[item_ids])
 
     def extra_repr(self) -> str:
         return f"n_items={self.n_items}, d_model={self.d_model}, frozen={self.frozen}"
@@ -221,7 +302,9 @@ class HybridItemRepresentation(ItemRepresentation):
         # direction was fine the whole time; only their length was wrong.
         return F.normalize(vectors, dim=-1) * self.log_scale.exp()
 
-    def item_vectors(self) -> Tensor:
+    def compute_item_vectors(self) -> Tensor:
+        # self.text.item_vectors(), not compute_: if the nested text module has
+        # its own frozen table this reuses it.
         return self._combine(self.text.item_vectors(), self.residual.weight)
 
     def forward(self, item_ids: Tensor) -> Tensor:

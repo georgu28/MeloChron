@@ -147,6 +147,13 @@ def load(path: str | Path, device: torch.device | str = "cpu", name: str = "sasr
     model.eval()
     head.eval()
 
+    # These weights are final: load() reconstructs an artifact to evaluate or
+    # serve, never to keep training from scratch. So the item table is
+    # materialized once here rather than per request, which is the difference
+    # between 538 ms and 8 ms on the hybrid variant. Fine-tuning from an artifact
+    # stays correct because ItemRepresentation.train() drops the frozen table.
+    model.items.freeze_item_vectors()
+
     return Artifact(
         model=model,
         head=head,
