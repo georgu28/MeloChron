@@ -95,6 +95,37 @@ def sample_histories(seqs, max_len: int, n_traces: int, seed: int = 0, min_histo
     return users, histories, times
 
 
+#: Per-event playback columns summarized per session when the corpus has them.
+#: lastfm-1K carries none of these, so every one is optional by construction.
+SIGNAL_AGGREGATES = {
+    "mean_seconds_played": (schema.MS_PLAYED, lambda g: g.mean() / 1000.0),
+    "skip_rate": (schema.SKIPPED, lambda g: g.mean()),
+    "shuffle_rate": (schema.SHUFFLE, lambda g: g.mean()),
+}
+
+
+def attach_signals(table, positives):
+    """Summarize playback signals per session and align them onto ``table``.
+
+    Joined on session id rather than zipped: the table is length-filtered and
+    subsampled, so positional alignment would quietly pair each session with
+    somebody else's numbers. A column that is entirely null is skipped rather
+    than attached as NaN, so a corpus without dwell data simply reports fewer
+    fields instead of a row of blanks.
+    """
+    if "session_id" not in positives.columns:
+        return table
+    for name, (column, aggregate) in SIGNAL_AGGREGATES.items():
+        if column not in positives.columns or positives[column].isna().all():
+            continue
+        grouped = positives.dropna(subset=[column]).groupby("session_id")[column]
+        stat = aggregate(grouped.astype("float64"))
+        table.signals[name] = archetypes.align_signal(
+            table, stat.index.to_numpy(dtype="int64"), stat.to_numpy(dtype="float64")
+        )
+    return table
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--checkpoint", type=Path, required=True, help="trained artifact (best.pt)")
@@ -175,6 +206,9 @@ def main(argv: list[str] | None = None) -> int:
         max_sessions=args.max_sessions,
         seed=args.seed,
     )
+    table = attach_signals(table, positives)
+    if table.signals:
+        print(f"session signals       {' '.join(sorted(table.signals)):>12}")
     result = archetypes.compute(table, vocab=vc, k_range=(args.k_min, args.k_max), seed=args.seed)
     arch_summary = result.summary()
     write_json(outdir / "archetypes.json", context, result.as_rows(), arch_summary)

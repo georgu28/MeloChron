@@ -130,13 +130,18 @@ def main(argv: list[str] | None = None) -> int:
     train_items = {int(i) for arr in train_period_seqs.items for i in arr.tolist()}
     print(f"repeat rate           {sessions.repeat_rate(all_seqs):>12.1%}")
 
+    # Validation is scored against the full catalog after every epoch, so its
+    # size is a per-epoch cost rather than a one-off. cfg.max_val_instances caps
+    # it independently of the test set: on a single-user corpus --max-per-user
+    # has to be large for the test table to mean anything, and inheriting that
+    # here would spend most of the run re-ranking the catalog for early stopping.
     val_instances = protocol.build_instances(
         train_period_seqs,
         cutoff_ts=inner.cutoff_ts,
         train_items=fit_items,
         holdout_users=frozenset(),
         max_len=cfg.max_len,
-        max_per_user=args.max_per_user,
+        max_per_user=min(args.max_per_user, cfg.max_val_instances),
         seed=args.seed,
     )
     test_instances = protocol.build_instances(

@@ -326,3 +326,38 @@ def test_attention_refuses_a_model_left_in_training_mode(encoder: SASRec) -> Non
     encoder.train()
     with pytest.raises(ValueError, match="training mode"):
         attention.trace(encoder, [np.array([5, 6, 7])], [np.array([0, HOUR, 2 * HOUR])])
+
+
+def test_signals_align_by_session_id_not_by_position() -> None:
+    # The failure this guards against is silent and total: the table is
+    # length-filtered and subsampled, so zipping a corpus-wide statistic onto it
+    # pairs every session with somebody else's dwell time and still produces a
+    # plausible cluster description.
+    table = _hand_built_table()
+    n = len(table.user_ids)
+    table.session_ids = np.array([50, 10, 30] + list(range(100, 100 + n - 3)), dtype=np.int64)
+
+    ids = np.array([10, 30, 50], dtype=np.int64)
+    values = np.array([1.0, 3.0, 5.0])
+    aligned = archetypes.align_signal(table, ids, values)
+
+    assert aligned[0] == 5.0, "session 50 did not receive its own value"
+    assert aligned[1] == 1.0, "session 10 did not receive its own value"
+    assert aligned[2] == 3.0, "session 30 did not receive its own value"
+    assert np.isnan(aligned[3]), "a session with no statistic was given someone else's"
+
+
+def test_clusters_report_attached_signals() -> None:
+    table = _hand_built_table()
+    table.signals["skip_rate"] = np.linspace(0.0, 1.0, len(table.user_ids))
+    result = archetypes.compute(table, k_range=(2, 2), seed=0, min_support=3)
+
+    for archetype in result.archetypes:
+        assert "skip_rate" in archetype.signals, "an attached signal was not summarized"
+        assert 0.0 <= archetype.signals["skip_rate"] <= 1.0
+
+
+def test_a_corpus_without_playback_signals_reports_none() -> None:
+    # lastfm-1K has no ms_played at all. Nothing may require these fields.
+    result = archetypes.compute(_hand_built_table(), k_range=(2, 2), seed=0, min_support=3)
+    assert all(not a.signals for a in result.archetypes), "signals invented from nowhere"

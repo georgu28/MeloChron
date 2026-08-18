@@ -93,6 +93,13 @@ class SessionTable:
     #: they lost too many events to OOV; ``sampled`` distinguishes the two.
     n_total: int = 0
     sampled: bool = False
+    #: Optional per-session playback statistics --- dwell, skip rate, shuffle
+    #: rate --- keyed by name and aligned to the rows above. Empty on a corpus
+    #: that does not carry them, which is why nothing here may assume they
+    #: exist. lastfm-1K has none of these fields; a Spotify export has all of
+    #: them, and they are what separates "played through, deliberate" from
+    #: "skipped, shuffled, background".
+    signals: dict[str, np.ndarray] = field(default_factory=dict)
 
     def __len__(self) -> int:
         return len(self.user_ids)
@@ -180,6 +187,36 @@ def build_sessions(
     )
 
 
+def align_signal(
+    table: SessionTable,
+    session_ids: np.ndarray,
+    values: np.ndarray,
+    fill: float = np.nan,
+) -> np.ndarray:
+    """Put a per-session statistic into ``table`` row order, by session id.
+
+    Sessions are subsampled and length-filtered, so a statistic computed over
+    the whole corpus arrives in a different order and a different length.
+    Joining on the id rather than zipping is the difference between a signal and
+    a silent shuffle of one. Ids absent from ``session_ids`` get ``fill``.
+    """
+    session_ids = np.asarray(session_ids, dtype=np.int64)
+    values = np.asarray(values, dtype=np.float64)
+    if len(session_ids) != len(values):
+        raise ValueError(f"got {len(session_ids)} session ids but {len(values)} values")
+
+    order = np.argsort(session_ids)
+    keys, vals = session_ids[order], values[order]
+    where = np.searchsorted(keys, table.session_ids)
+    where = np.clip(where, 0, max(len(keys) - 1, 0))
+
+    out = np.full(len(table.session_ids), fill, dtype=np.float64)
+    if len(keys):
+        hit = keys[where] == table.session_ids
+        out[hit] = vals[where[hit]]
+    return out
+
+
 def _artist_of(vocab: Vocab | None, item_id: int) -> str:
     if vocab is None or not vocab.display or item_id >= len(vocab.display):
         return str(item_id)
@@ -235,9 +272,12 @@ class Archetype:
     hour_histogram: list[int] = field(default_factory=list)
     top_artists: list[dict] = field(default_factory=list)
     top_items: list[dict] = field(default_factory=list)
+    #: Mean of each attached playback signal over this cluster's sessions.
+    signals: dict[str, float] = field(default_factory=dict)
 
     def as_row(self) -> dict:
         return {
+            **{k: round(v, 4) for k, v in self.signals.items()},
             "cluster": self.cluster,
             "n_sessions": self.n_sessions,
             "share": round(self.share, 4),
@@ -380,6 +420,13 @@ def compute(
                     min_support,
                     top_labels,
                 ),
+                signals={
+                    # nanmean: a session can be missing a signal without
+                    # disqualifying the cluster from reporting the rest.
+                    name: float(np.nanmean(values[members]))
+                    for name, values in table.signals.items()
+                    if not np.all(np.isnan(values[members]))
+                },
             )
         )
 

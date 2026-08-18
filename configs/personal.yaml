@@ -53,3 +53,7 @@ stride: 25
 patience: 8
 seed: 0
 eval_batch_size: 128
+# Validation is re-ranked against the whole catalog every epoch, so this is a
+# per-epoch cost. The test table needs tens of thousands of instances to mean
+# anything; early stopping on NDCG@10 is stable well below that.
+max_val_instances: 2000
