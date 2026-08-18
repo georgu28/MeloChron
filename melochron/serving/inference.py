@@ -88,6 +88,24 @@ class Recommender:
         matched = int((ids >= FIRST_ITEM_ID).sum())
         return ids, times, matched / len(ids)
 
+    def context(self, history: list[tuple[str, str, int]]) -> list[tuple[str, str, int, bool]]:
+        """The window the model actually conditioned on, with vocabulary membership.
+
+        Exposed because a recommendation is far easier to trust when the input
+        that produced it can be inspected, and because coverage as a single
+        percentage hides *where* the gaps are --- a history that is unknown only
+        in its oldest third is a different situation from one that is unknown
+        throughout.
+
+        Returns the same slice :meth:`encode_history` scores, so the two cannot
+        disagree about what the model saw. This is also the window a Phase 6
+        attention surface would draw weights over.
+        """
+        if not history:
+            return []
+        tail = sorted(history, key=lambda row: row[2])[-self.max_len :]
+        return [(a, t, ts, canonical_key(a, t) in self.vocab.key_to_id) for a, t, ts in tail]
+
     def recommend(
         self,
         history: list[tuple[str, str, int]],
@@ -107,13 +125,65 @@ class Recommender:
             return RecommendationResult([], 0.0, 0, 0, cold_start=True)
 
         scores = self.scorer.score([ids], [times])[0]
+        return self._rank(scores, ids, coverage, k=k, exclude_history=exclude_history)
 
+    def recommend_batch(
+        self,
+        histories: list[list[tuple[str, str, int]]],
+        k: int = 20,
+        exclude_history: bool = False,
+    ) -> list[RecommendationResult]:
+        """Score several histories in one forward pass.
+
+        Not a convenience loop: :meth:`SASRecScorer.score` materialises the
+        whole ``[n_items, d_model]`` item table once per call, and for a
+        projected text representation that projection is the dominant cost of a
+        single request. Scoring n histories together pays it once instead of n
+        times, so the per-request cost of a batch of 8 is far below 8x the cost
+        of one.
+
+        Empty histories keep their slot in the returned list rather than being
+        dropped, so the caller can zip results back to requests positionally.
+        """
+        encoded = [self.encode_history(h) for h in histories]
+        results = [RecommendationResult([], 0.0, 0, 0, cold_start=True) for _ in histories]
+
+        live = [i for i, (ids, _, _) in enumerate(encoded) if len(ids)]
+        if not live:
+            return results
+
+        scores = self.scorer.score([encoded[i][0] for i in live], [encoded[i][1] for i in live])
+        for row, i in enumerate(live):
+            ids, _, coverage = encoded[i]
+            results[i] = self._rank(
+                scores[row], ids, coverage, k=k, exclude_history=exclude_history
+            )
+        return results
+
+    def _rank(
+        self,
+        scores: np.ndarray,
+        ids: np.ndarray,
+        coverage: float,
+        k: int,
+        exclude_history: bool,
+    ) -> RecommendationResult:
+        """Turn one row of catalog scores into a ranked result.
+
+        Copies before masking. In the batched path ``scores`` is a view into
+        the scorer's output array, and writing ``-inf`` through it would edit
+        data the caller still owns --- harmless today because each row is read
+        once, and exactly the kind of aliasing bug that stops being harmless
+        the moment someone reuses the matrix.
+        """
+        scores = scores.copy()
         scores[PAD_ID] = -np.inf
         scores[OOV_ID] = -np.inf
         if exclude_history:
             seen = ids[ids >= FIRST_ITEM_ID]
             scores[seen] = -np.inf
 
+        k = max(1, min(k, len(scores)))
         top = np.argpartition(-scores, min(k, len(scores) - 1))[:k]
         top = top[np.argsort(-scores[top])]
 
