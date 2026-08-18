@@ -123,9 +123,7 @@ def attach_signals(table, positives):
         # convert to float in a groupby. Going through numpy with an explicit
         # na_value handles both without special-casing either.
         values = positives[column].to_numpy(dtype="float64", na_value=np.nan)
-        frame = pd.DataFrame({"session_id": session_ids, "value": values}).dropna(
-            subset=["value"]
-        )
+        frame = pd.DataFrame({"session_id": session_ids, "value": values}).dropna(subset=["value"])
         if frame.empty:
             continue
         stat = aggregate(frame.groupby("session_id")["value"])
