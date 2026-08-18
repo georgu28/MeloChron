@@ -42,21 +42,54 @@ def text_vectors(small):
     return vectors
 
 
-def test_starts_identical_to_pure_text(text_vectors):
-    """At init the hybrid must be exactly the text variant, not approximately.
+def test_starts_as_pure_text_in_direction(text_vectors):
+    """At init the hybrid must rank exactly as the text variant does.
 
-    This is what makes the comparison in the ablation meaningful: the hybrid
-    begins where text ends and can only diverge by what it learns.
+    With normalization on it is not element-wise identical to the text variant,
+    it is that variant projected onto the unit sphere. Direction is what decides
+    ranking, so cosine similarity of 1.0 is the property worth asserting; exact
+    equality would just be asserting that normalization is off.
     """
     torch.manual_seed(0)
     hybrid = HybridItemRepresentation(text_vectors, d_model=32)
-
     torch.manual_seed(0)
     text_only = ProjectedTextEmbedding(text_vectors, d_model=32)
 
-    torch.testing.assert_close(hybrid.item_vectors(), text_only.item_vectors())
+    a = torch.nn.functional.normalize(hybrid.item_vectors()[2:], dim=-1)
+    b = torch.nn.functional.normalize(text_only.item_vectors()[2:], dim=-1)
+    torch.testing.assert_close((a * b).sum(-1), torch.ones(len(a)), atol=1e-5, rtol=1e-5)
+
     assert hybrid.residual.weight.abs().sum().item() == 0.0
     assert len(hybrid.pure_text_rows()) == hybrid.n_items
+
+
+def test_unnormalized_starts_exactly_at_pure_text(text_vectors):
+    """With normalization off the hybrid is element-wise the text variant."""
+    torch.manual_seed(0)
+    hybrid = HybridItemRepresentation(text_vectors, d_model=32, normalize=False)
+    torch.manual_seed(0)
+    text_only = ProjectedTextEmbedding(text_vectors, d_model=32)
+    torch.testing.assert_close(hybrid.item_vectors(), text_only.item_vectors())
+
+
+def test_normalization_equalizes_trained_and_cold_magnitudes(text_vectors):
+    """The bug this exists to prevent, stated directly.
+
+    An unnormalized residual grows during training while cold rows stay at
+    text-only scale. Scoring is a dot product, so that magnitude gap alone
+    buries cold items regardless of how good their direction is. The first
+    hybrid run scored a flat 0.0000 on every cold slice for exactly this reason:
+    trained items reached norm 1.52 against 0.56 for pure-text items.
+    """
+    hybrid = HybridItemRepresentation(text_vectors, d_model=32, normalize=True)
+    with torch.no_grad():
+        hybrid.residual.weight[5:20].normal_(std=3.0)  # simulate trained rows
+
+    norms = hybrid.item_vectors().norm(dim=-1)
+    trained, cold = norms[5:20], norms[20:]
+    assert torch.allclose(trained.mean(), cold.mean(), atol=1e-4), (
+        f"trained {trained.mean():.4f} vs cold {cold.mean():.4f}: magnitudes must match"
+    )
 
 
 def test_gradient_touches_only_the_rows_it_indexes(text_vectors):

@@ -28,6 +28,7 @@ from __future__ import annotations
 from abc import abstractmethod
 
 import torch
+import torch.nn.functional as F
 from torch import Tensor, nn
 
 
@@ -183,6 +184,7 @@ class HybridItemRepresentation(ItemRepresentation):
         oov_id: int = 1,
         freeze_text: bool = True,
         residual_scale: float = 1.0,
+        normalize: bool = True,
     ):
         super().__init__()
         self.text = ProjectedTextEmbedding(
@@ -197,11 +199,33 @@ class HybridItemRepresentation(ItemRepresentation):
         self.residual = nn.Embedding(self.n_items, d_model, padding_idx=pad_id)
         nn.init.zeros_(self.residual.weight)
 
+        self.normalize = normalize
+        # A single learned scalar, applied to every item alike. It sets the
+        # softmax temperature without ever changing the *relative* order of two
+        # items, which is what keeps normalization from smuggling in a new
+        # per-item advantage.
+        self.log_scale = nn.Parameter(torch.tensor(0.0))
+
+    def _combine(self, text: Tensor, residual: Tensor) -> Tensor:
+        vectors = text + self.residual_scale * residual
+        if not self.normalize:
+            return vectors
+        # L2-normalize so items compete on direction alone.
+        #
+        # Without this the first hybrid run scored a flat 0.0000 on every cold
+        # item despite the residual guarantee holding exactly: 7,306 rows were
+        # still zero, as designed. The residual simply grew, so trained items
+        # ended at norm 1.52 against 0.56 for pure-text items, a 2.7x gap. Since
+        # scoring is a dot product, that magnitude difference alone kept cold
+        # items out of the top 10 against 164k trained competitors. Their
+        # direction was fine the whole time; only their length was wrong.
+        return F.normalize(vectors, dim=-1) * self.log_scale.exp()
+
     def item_vectors(self) -> Tensor:
-        return self.text.item_vectors() + self.residual_scale * self.residual.weight
+        return self._combine(self.text.item_vectors(), self.residual.weight)
 
     def forward(self, item_ids: Tensor) -> Tensor:
-        return self.text(item_ids) + self.residual_scale * self.residual(item_ids)
+        return self._combine(self.text(item_ids), self.residual(item_ids))
 
     def pure_text_rows(self) -> Tensor:
         """Ids whose residual is still exactly zero, i.e. pure-text items.

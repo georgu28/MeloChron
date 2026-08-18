@@ -131,7 +131,18 @@ def load(path: str | Path, device: torch.device | str = "cpu", name: str = "sasr
         use_time=config.get("use_time", True),
     )
 
-    model.load_state_dict(payload["model"])
+    # Non-strict, then verified. A checkpoint written before a new optional
+    # parameter existed is still loadable, but silently accepting *any* missing
+    # weight would let a genuinely incompatible artifact through and show up
+    # only as bad metrics. So the gap is checked against a known-safe list.
+    OPTIONAL_SINCE_V1 = {"items.log_scale"}
+    incompatible = model.load_state_dict(payload["model"], strict=False)
+    unexpected_missing = set(incompatible.missing_keys) - OPTIONAL_SINCE_V1
+    if unexpected_missing or incompatible.unexpected_keys:
+        raise ValueError(
+            f"checkpoint does not match this model: missing {sorted(unexpected_missing)}, "
+            f"unexpected {sorted(incompatible.unexpected_keys)}"
+        )
     head.load_state_dict(payload["head"], strict=False)
     model.eval()
     head.eval()
