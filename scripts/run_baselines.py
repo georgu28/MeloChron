@@ -55,6 +55,24 @@ def load_events(args):
     raise ValueError(f"unknown corpus {args.data!r}")
 
 
+def _stem(args) -> str:
+    """The output name for this corpus.
+
+    ``--data`` is not specific enough to name a file by. Both the pretraining
+    corpus and a personal export arrive as ``--data parquet``, so both wrote
+    ``baselines-parquet.*`` and the second run silently replaced the first --
+    which is exactly what happened, leaving a 992-user baseline table
+    overwritten by a one-user one under a name that still claimed to be the
+    corpus. For parquet the filename is the thing that actually distinguishes
+    them, so it is what gets used.
+    """
+    if args.name:
+        return args.name
+    if args.data == "parquet" and args.path is not None:
+        return Path(args.path).stem
+    return args.data
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument(
@@ -72,6 +90,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--batch-size", type=int, default=256)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--outdir", type=Path, default=Path("artifacts/baselines"))
+    ap.add_argument(
+        "--name",
+        help="output stem; defaults to the corpus, or the parquet filename for --data parquet",
+    )
     args = ap.parse_args(argv)
 
     if args.data != "synthetic" and args.path is None:
@@ -167,7 +189,7 @@ def main(argv: list[str] | None = None) -> int:
     paths = report.write(
         results,
         args.outdir,
-        stem=f"baselines-{args.data}",
+        stem=f"baselines-{_stem(args)}",
         context=context,
         n_items=vc.n_items,
         notes=notes,
