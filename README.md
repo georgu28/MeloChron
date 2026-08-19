@@ -23,11 +23,13 @@ one that counts.
 - **Pretraining, not the text representation, is what buys that.** An identical
   architecture with identical text vectors, trained from scratch instead of
   loaded, scores 4.2x worse.
-- **Per-user fine-tuning is negative on the slice that motivated the design.**
-  Measured against a baseline whose text distribution actually matches, it loses
-  9 hits out of 2,601 on cold start rather than gaining 4. It is a large win on
-  catalog the user already plays (+27% overall) and a cost on everything else,
-  so the deployable answer is two artifacts and not one.
+- **Per-user fine-tuning is the largest single win in the project, and it is
+  negative on the one slice that motivated the design.** Against its own
+  starting point it gains **+52% overall and +60% on replays** — 87% of the test
+  set, at 11 standard errors — and loses 24% on tracks the user has never
+  played, 38 hits against 50 out of 2,601. Not a marginal result in either
+  direction, which is why the deployable answer is two artifacts routed per
+  request rather than one.
 - **Every non-neural baseline scores exactly 0.0000 on the strict transfer
   slice.** Popularity, repeat and item-kNN are all collaborative or
   memorization-based, so a track absent from training is unrankable for all of
@@ -242,11 +244,27 @@ all-zero residual (`melochron/train/transfer.py`).
 errors at n=20,000 — while scoring 0.0146 on tracks `scratch (id)` cannot rank
 at all. Every earlier configuration forced a choice between the two.
 
-**And it is still beaten on cold start by doing nothing.** Zero-shot scores
+**Measured as adaptation rather than against a different model, the effect is
+larger still.** The honest question about fine-tuning is what it adds to the
+checkpoint it started from, and against zero-shot it is +52% on `overall` and
+**+60% on `repeat`** at 11 SE. Replays are 87% of this test set, so that is most
+of what a user of this system would actually experience:
+
+| slice | share | zero-shot | fine-tuned | |
+|---|---|---|---|---|
+| repeat | 87.0% | 0.0300 | **0.0479** | +60% |
+| novel | 13.0% | **0.0192** | 0.0146 | −24% |
+
+**And on cold start it is still beaten by doing nothing.** Zero-shot scores
 0.0192 there against fine-tuned's 0.0146, a 24% drop from adapting to the user
 (2.0 SE). The same thing happens to the text variant, −19.1%, and text has no
 residual, so this is the general cost of specializing an encoder on one
 listener's catalog rather than anything specific to the hybrid.
+
+Worth keeping the two statements apart, because collapsing them says something
+false. "Fine-tuning did not work" is wrong: it worked enormously, on 87% of the
+test set. What is true is narrower — fine-tuning does not buy cold start, and
+costs a little there.
 
 The deployable reading is unchanged in shape and sharper in detail: **fine-tune
 for the catalog someone already plays, keep the zero-shot model for discovery.**
