@@ -33,6 +33,11 @@ one that counts.
 - **The margin over item-kNN on novel tracks is real but narrows with k** —
   +57% at HR@5, +17% at HR@10, +1.7% at HR@20. The model is much better in the
   top few slots and the co-occurrence baseline has caught up by twenty.
+- **The one bespoke architectural idea here does nothing, and the reason is in
+  the data.** Time-interval-aware attention is a clean null on a matched pair at
+  n=25,950 — because 85.6% of consecutive plays sit in two of its 24 gap buckets.
+  People play one song after another; the gap is almost always the length of a
+  track.
 - **Genre tags were nearly worthless alone and are load-bearing in combination.**
   Tags moved HR@10 by ~7% as a representation on their own; the same tags under
   a learned residual give the best model in the project. The signal was there,
@@ -365,9 +370,65 @@ questions: does it predict this user's future, and does it work for someone it
 never trained on. Validation is cut *inside* the training period — early
 stopping on test data leaks invisibly.
 
-**Time-interval-aware attention.** Inter-event gaps are log-bucketed and
-injected alongside position, in the spirit of TiSASRec (Li, Wang, McAuley, WSDM
-2020). A three-month gap is a different context from thirty seconds.
+**Time-interval-aware attention, measured and not retained as a claim.**
+Inter-event gaps are log-bucketed into 24 buckets from one second to one year
+and injected alongside position, in the spirit of TiSASRec (Li, Wang, McAuley,
+WSDM 2020). The reasoning was that a three-month gap is a different context from
+thirty seconds. The reasoning is fine and the feature does not pay.
+
+Two hybrid runs, identical in every setting except `use_time`, both scored
+through `scripts/evaluate.py` on one instance set of **25,950** — not on their
+own training-time tables, which were built over different instance counts and
+are not comparable:
+
+| slice | n | time | no time | delta |
+|---|---|---|---|---|
+| overall | 25,950 | 0.3131 | 0.3139 | −0.2% |
+| repeat | 19,466 | 0.3361 | 0.3363 | −0.1% |
+| novel | 6,484 | 0.2441 | 0.2465 | −0.9% |
+| cold_user | 2,840 | 0.3430 | 0.3454 | −0.7% |
+| cold_item | 1,644 | 0.3613 | 0.3534 | +2.2% |
+| cold_start | 311 | 0.3151 | 0.2958 | +6.5% |
+
+HR@10. **Removing the time encoding changes nothing.** Four of six slices are
+very slightly better without it, and every difference on the large slices is
+under a percent — against a standard error of ~0.3% on `overall`, which is to
+say inside the noise floor. The two positive cells do not survive contact with
+other k: `cold_start` is +6.5% at k=10, −3.7% at k=5 and −3.1% at k=20, and at
+n=311 that is 98 hits against 92. Six hits is not a finding.
+
+**The interesting part is why, and it is not subtle.** The encoding spans one
+second to one year, and the corpus does not:
+
+| | lastfm-1K | personal |
+|---|---|---|
+| median inter-event gap | 240 s | 204 s |
+| share in the top 2 buckets | 85.6% | 82.8% |
+| buckets holding >1% of gaps | 5 of 24 | 8 of 24 |
+| bucket entropy | 1.71 bits | 1.51 bits |
+| gaps over 1 hour | 3.88% | 2.78% |
+
+People listen to music one track after another. The gap between consecutive
+plays is the length of a song — 91.1% of all gaps fall between thirty seconds
+and ten minutes — so a feature designed to distinguish thirty seconds from three
+months spends almost all of its time reading the same value. Of 4.58 bits
+available across 24 buckets the realised distribution carries 1.71, and the
+personal export is *worse*, not better, so this is not an artifact of the
+pretraining corpus being old or scrobble-shaped.
+
+It costs 3,072 parameters, 0.014% of the model, so keeping it is close to free
+and removing it would buy nothing either. It stays in the code and stays on by
+default; what changes is that it is described here as a measured null instead of
+as a design feature, because the alternative is a README crediting an idea for
+accuracy it did not produce.
+
+Worth being clear about what this does not show. Inter-event time is not
+useless *in principle* — it is uninformative in a corpus where the gap is nearly
+constant. A dataset with genuine dormancy structure, or a formulation using
+absolute time-of-day and day-of-week rather than gaps between consecutive plays,
+would be a different experiment. Session archetypes below do separate cleanly on
+hour-of-day, which is evidence that temporal signal exists in this data and that
+the gap between adjacent plays is simply the wrong place to look for it.
 
 ---
 
@@ -536,10 +597,9 @@ catalog) because it represents hours of rate-limited requests.
   directional. `cold_start` at n=79 is the one to treat most cautiously: the
   hybrid result there is 21 hits, against 7 for the identical text vectors used
   without a residual.
-- **The time-interval encoding is unablated.** Inter-event gaps are described
-  below as a design decision, and every run in this README has `use_time=True`.
-  Until a matched `use_time=False` run exists, that section is a design argument
-  and not a measured one — which is a weaker footing than everything else here.
+- **The time ablation is a single matched pair, one seed.** It is a clean null
+  at n=25,950 and the mechanism explains it, but two runs cannot distinguish a
+  true zero from a small effect this corpus cannot express.
 - **Latency is measured on a development laptop**, not on a deploy target, and
   the absolute figures move with machine load. The variant comparison is stable;
   the absolute is not an SLO.
@@ -552,7 +612,6 @@ catalog) because it represents hours of rate-limited requests.
   *zero-shot* hybrid should beat zero-shot `text_frozen`, because on a new
   catalog every item is cold from the residual's point of view and per-row
   normalization is exactly the correction that regime needs.
-- **The time-delta ablation** — the one unmeasured design claim in this README.
 - **A `max_len` sweep**, the measured binding constraint on a personal corpus.
 - **Deployment.** The service runs locally and is not hosted anywhere.
 - **A frontend for the insight JSON.** The upload-and-recommend surface exists;
