@@ -9,6 +9,13 @@ check or reproduce.
 
 Measured on CPU by default, because that is what the deployed service runs on.
 A GPU number would be faster and would not describe production.
+
+It also applies the *service's* torch thread bound rather than torch's default.
+That is not a detail: left alone, torch sizes its intra-op pool to the whole
+machine, while the service caps it at four so concurrent requests do not
+oversubscribe the cores. Benchmarking the unbounded configuration measured
+23.2 ms p50 for an artifact the service itself served in 9.6 ms -- a number that
+was not wrong so much as about a configuration nothing runs.
 """
 
 from __future__ import annotations
@@ -21,6 +28,7 @@ import numpy as np
 
 from melochron.data.vocab import FIRST_ITEM_ID
 from melochron.serving.inference import Recommender, benchmark
+from melochron.serving.registry import configure_torch_threads
 from melochron.train import checkpoint as ckpt
 
 
@@ -56,6 +64,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args(argv)
 
+    # Same bound the service applies at startup, so this measures what a
+    # request actually meets rather than a configuration nothing runs.
+    threads = configure_torch_threads()
+
     artifact = ckpt.load(args.checkpoint, device=args.device)
     recommender = Recommender(
         artifact.scorer, artifact.vocab, max_len=artifact.config.get("max_len", 200)
@@ -65,6 +77,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"variant         {artifact.config.get('variant')}")
     print(f"catalog         {artifact.vocab.n_items:,} items")
     print(f"device          {args.device}")
+    print(f"torch threads   {threads}")
     print(f"history length  {args.history_length}")
 
     histories = synthetic_histories(artifact.vocab, args.requests, args.history_length)
@@ -72,6 +85,7 @@ def main(argv: list[str] | None = None) -> int:
     result["device"] = args.device
     result["history_length"] = args.history_length
     result["variant"] = artifact.config.get("variant")
+    result["torch_threads"] = threads
 
     print()
     print(json.dumps(result, indent=2))
