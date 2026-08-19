@@ -4,6 +4,11 @@ Sequential music recommendation from listening history. A causal self-attention
 encoder written from scratch in PyTorch, pretrained on 19.1M real plays, then
 tested on a personal Spotify export that overlaps the training catalog by 6.5%.
 
+The item representation that works is a **frozen text prior plus a learned
+per-item residual**. Neither half is sufficient and the ablation below shows why:
+learned ID embeddings cannot score a track they never saw, text embeddings can
+but give up most of the accuracy on tracks they did.
+
 Aggregate metrics in this domain are dominated by replays: a model that
 memorizes what you just played scores well overall and has learned nothing. So
 every table here is split into *repeat* and *novel*, and the novel column is the
@@ -21,8 +26,17 @@ one that counts.
 - **Per-user fine-tuning bought 4 extra hits out of 2,601** (+2.8% at k=10). The
   design bar was "adaptation ships only on a measured delta"; at k=10 it fails
   that bar, and clearly helps only on tracks the user already plays.
-- **On a public 992-user corpus the transformer does not clearly beat item-kNN
-  on novel tracks** — better at HR@10, worse at HR@20. The honest word is tie.
+- **Every non-neural baseline scores exactly 0.0000 on the strict transfer
+  slice.** Popularity, repeat and item-kNN are all collaborative or
+  memorization-based, so a track absent from training is unrankable for all of
+  them. The hybrid representation scores 0.2658 there.
+- **The margin over item-kNN on novel tracks is real but narrows with k** —
+  +57% at HR@5, +17% at HR@10, +1.7% at HR@20. The model is much better in the
+  top few slots and the co-occurrence baseline has caught up by twenty.
+- **Genre tags were nearly worthless alone and are load-bearing in combination.**
+  Tags moved HR@10 by ~7% as a representation on their own; the same tags under
+  a learned residual give the best model in the project. The signal was there,
+  it just could not be used without a per-item correction.
 
 Two corpora, deliberately disjoint. lastfm-1K is where the model is pretrained
 and the baselines are set. The personal export is where the transfer claim is
@@ -57,25 +71,49 @@ better. Rows here are comparable to each other, not to a sampled-negative paper.
 with ≥20 plays: **171,902 items**, 99 users held out. n=5,334.
 **Chance HR@10 = 0.000058.**
 
-| slice | n | popularity | repeat | item-kNN | **SASRec (id)** |
-|---|---|---|---|---|---|
-| overall | 5,334 | 0.0019 | 0.1468 | 0.2171 | **0.2553** |
-| repeat | 3,898 | 0.0023 | 0.2006 | 0.2304 | **0.2804** |
-| novel | 1,436 | 0.0007 | 0.0007 | 0.1811 | **0.1873** |
-| cold_user | 570 | 0.0035 | 0.1912 | 0.2018 | **0.2386** |
-| cold_item | 368 | 0.0000 | **0.3913** | 0.0000 | 0.0000 |
+| slice | n | popularity | repeat | item-kNN | SASRec (id) | **SASRec (hybrid)** |
+|---|---|---|---|---|---|---|
+| overall | 5,334 | 0.0019 | 0.1468 | 0.2171 | 0.2553 | **0.3020** |
+| repeat | 3,898 | 0.0023 | 0.2006 | 0.2304 | 0.2804 | **0.3353** |
+| novel | 1,436 | 0.0007 | 0.0007 | 0.1811 | 0.1873 | **0.2117** |
+| cold_user | 570 | 0.0035 | 0.1912 | 0.2018 | 0.2386 | **0.3211** |
+| cold_item | 368 | 0.0000 | **0.3913** | 0.0000 | 0.0000 | 0.3315 |
+| cold_start | 79 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | **0.2658** |
 
-**Metric:** HR@10, the hit rate in the top 10. Bold marks the best result
-in each row, with one exception: on `cold_item` the ID model cannot score at
-all, so repeat holds that row by default rather than by skill.
+**Metric:** HR@10, the hit rate in the top 10. Bold marks the best result in
+each row. `hybrid` is the deployable representation, defined in the ablation
+below; `id` is kept in the table because it is the control the hybrid is built
+out of, not because it is a second product.
 
-**The transformer wins overall and ties where it matters.** +17.6% relative over
-item-kNN overall. On `novel` it is 0.1873 vs 0.1811 and NDCG@10 is 0.0964 vs
-0.0959 — a tie — and at HR@20 it is *worse* (0.2124 vs 0.2472). It is more
-precise in the top slots and retrieves less across a wider net.
+**The hybrid model wins every slice except `cold_item`,** where the repeat
+baseline holds 0.3913 against 0.3315. That row is not the upset it looks like:
+`cold_item` means absent from *training*, and evaluation context legitimately
+includes a user's earlier test-period plays, so a user can already know a track
+the model never trained on. Repeat is very good at exactly that. `cold_start`,
+the intersection with `novel`, is the row without that loophole.
+
+**Every non-neural model scores exactly 0.0000 on `cold_start`.** Popularity,
+repeat and item-kNN all reduce to counting co-occurrences among tracks someone
+has already played, so a track absent from the training period is not ranked
+badly by them — it cannot be ranked at all. This is the row the whole transfer
+argument is about, and it is the row where the baselines have nothing to say.
+
+**Against item-kNN on `novel` the win is real and shrinks with k.**
+
+| | HR@5 | HR@10 | HR@20 | NDCG@10 |
+|---|---|---|---|---|
+| item-kNN | 0.1058 | 0.1811 | 0.2472 | 0.0959 |
+| hybrid | **0.1657** | **0.2117** | **0.2514** | **0.1067** |
+| relative | +56.6% | +16.9% | +1.7% | +11.2% |
+
+Reported at three k rather than one because one k would let either story be
+told. The model is much better in the top five slots, and by twenty a plain
+co-occurrence baseline has all but caught it. For a product that shows
+ten recommendations that is the favourable half of the range, which is worth
+saying out loud rather than leaving to the reader to notice.
 
 **Repeat scoring 0.0007 on `novel` is the control working.** It is a cache; it
-can only rank what you already played. Beating it there by 250x is what
+can only rank what you already played. Beating it there by 300x is what
 separates a recommender from a lookup table. Item-kNN also clears it, which is
 why item-kNN is the number to beat.
 
@@ -83,14 +121,44 @@ why item-kNN is the number to beat.
 
 Same architecture, same data, same harness; only the item vectors change.
 
-| slice | n | id | text (names) | text (+tags) |
-|---|---|---|---|---|
-| overall | 5,334 | **0.2553** | 0.1376 | 0.1474 |
-| repeat | 3,898 | **0.2804** | 0.1632 | 0.1750 |
-| novel | 1,436 | **0.1873** | 0.0682 | 0.0724 |
-| cold_user | 570 | **0.2386** | 0.1754 | 0.1807 |
-| **cold_item** | 368 | 0.0000 | 0.2500 | **0.2745** |
-| **cold_start** | 79 | 0.0000 | **0.1392** | 0.0886 |
+| slice | n | id | text (names) | text (+tags) | **hybrid** |
+|---|---|---|---|---|---|
+| overall | 5,334 | 0.2553 | 0.1376 | 0.1474 | **0.3020** |
+| repeat | 3,898 | 0.2804 | 0.1632 | 0.1750 | **0.3353** |
+| novel | 1,436 | 0.1873 | 0.0682 | 0.0724 | **0.2117** |
+| cold_user | 570 | 0.2386 | 0.1754 | 0.1807 | **0.3211** |
+| **cold_item** | 368 | 0.0000 | 0.2500 | 0.2745 | **0.3315** |
+| **cold_start** | 79 | 0.0000 | 0.1392 | 0.0886 | **0.2658** |
+
+`hybrid` is `item_vectors = projection(text) + residual[id]`, and its text half
+is the **same tagged matrix as the `text (+tags)` column** — verified by
+comparing the buffers in the two checkpoints, not by trusting the run names. So
+that pair isolates one thing: what a learned per-item residual adds to a fixed
+text prior.
+
+**The residual does not merely recover what text gave up, it overtakes ID
+embeddings.** Against its own text prior it is 2.05x overall and 3.00x on
+`cold_start`; against `id` it is +18.3% overall while going from a structural
+zero to 0.2658 on `cold_start`. The two representations are not competing
+accounts of an item. Text says what an item *is*, interaction data says what
+listeners *do* with it, and neither is recoverable from the other.
+
+**The residual is zero-initialized, and that is the whole mechanism.** A row
+that never receives gradient stays exactly zero, so the item falls back to pure
+text with nothing corrupting it. Cold items never receive gradient: they are
+never positives, by definition of being absent from the training period, and
+never negatives, because popularity sampling weights by training count and a
+count of zero is drawn with probability zero. Random initialization would add
+noise to precisely the items with no signal to override it. On the trained
+artifact, **7,306 of 171,904 rows are still exactly zero**, which is the
+guarantee observed rather than argued.
+
+Item vectors are also L2-normalized before scoring. That sounds cosmetic and is
+not: in the first hybrid run every cold item scored a flat 0.0000 despite the
+residual guarantee holding exactly. Trained items had grown to norm 1.52 against
+0.56 for pure-text items, and since scoring is a dot product that 2.7x length
+difference alone kept cold items out of the top 10 against 164k trained
+competitors. Their direction had been right the whole time.
 
 **Every `0.0000` in an ID column is a coverage statement, not a loss.** A track
 absent from training has no row in the item table — it is not ranked badly, it
@@ -103,14 +171,26 @@ model is bad at cold items" is wrong.
 matrix is frozen and only the 384→128 projection and the blocks train. A 47x
 smaller trainable model buys unseen-item scoring and pays for it on seen ones.
 
-**Genre tags barely moved ranking, which is the most interesting result here.**
-Tags on 98.3% of items cut training loss (3.65 → 3.16 at matched epochs) but
-moved HR@10 ~7% relative, and `cold_start` went *down* — 11 hits vs 7 out of 79,
-with HR@20 a wash. The honest statement is **no reliable difference**. Likely
-mechanism: tags were fetched per *artist*, so every track by an artist gets
-identical text. That sharpens between-artist separation and destroys
-within-artist discrimination — and much of next-track prediction is choosing
-among tracks by the artist already playing.
+`hybrid` trains **22.48M**, so against `id` it is not a capacity story at all:
+essentially the same budget, spent on correcting a prior instead of on learning
+a table from scratch, for +18.3% overall and the cold-start slice going from
+impossible to 0.2658.
+
+**Genre tags barely moved ranking on their own, and are load-bearing in
+combination.** As a representation, tags on 98.3% of items cut training loss
+(3.65 → 3.16 at matched epochs) but moved HR@10 ~7% relative, and `cold_start`
+went *down* — 11 hits vs 7 out of 79, with HR@20 a wash. Read alone that is **no
+reliable difference**.
+
+The diagnosis at the time was that tags are fetched per *artist*, so every track
+by an artist gets identical text: sharper between-artist separation, destroyed
+within-artist discrimination, and much of next-track prediction is choosing
+among tracks by the artist already playing. The hybrid column is that diagnosis
+tested. Give the model a per-item residual — exactly the within-artist
+distinction artist-level tags cannot express — and the same tagged vectors go
+from 0.1474 to 0.3020. The tag signal was real and simply unusable without
+somewhere to put the correction, which is a more useful conclusion than "tags
+did not help" and would have been invisible without running the combination.
 
 ---
 
@@ -262,8 +342,13 @@ the two-stage serving design is impossible. The follow-through is above:
 fine-tuning was measured against zero-shot and did not clear the bar on unseen
 tracks.
 
-**Text item vectors, not IDs alone.** This is what makes cold start solvable
-rather than a special case to apologize for.
+**Text item vectors, not IDs alone — then both.** Text is what makes cold start
+solvable rather than a special case to apologize for, and the ablation was
+supposed to settle which representation to ship. It settled something better:
+both, because the failure modes are complementary rather than ranked. The
+deployed representation is a frozen text prior with a zero-initialized per-item
+residual on top, which is the only variant that is never structurally unable to
+score an item and never gives up accuracy on items it knows.
 
 **Last.fm tags, not Spotify.** Spotify's February 2026 changes removed batch
 metadata endpoints, but the decisive reason is different: Spotify tags would
@@ -288,11 +373,62 @@ injected alongside position, in the spirit of TiSASRec (Li, Wang, McAuley, WSDM
 
 ## Serving
 
-Measured on CPU, full 171,902-item catalog, 200-event history:
+A FastAPI service loads a versioned artifact at startup, parses uploads
+asynchronously, and scores the full catalog in one batched pass.
+`scripts/bench_latency.py`, CPU, 4 torch threads, full 171,902-item catalog,
+200-event history, 400 requests:
 
-| p50 | p95 | p99 |
-|---|---|---|
-| 8.2 ms | 9.35 ms | 15.71 ms |
+| variant | p50 | p95 | p99 |
+|---|---|---|---|
+| id | 24.00 ms | 27.70 ms | 31.72 ms |
+| text_frozen | 24.04 ms | 29.25 ms | 30.04 ms |
+| **hybrid** | **24.38 ms** | **31.60 ms** | **34.05 ms** |
+
+**Read the comparison, not the absolute.** This is a loaded development laptop,
+and across repeated trials the same artifact measured anywhere from 14 to 24 ms
+p50 depending on what else was running. What is stable across every trial is
+that the three variants land within about a millisecond of each other at p50.
+The deployable representation costs essentially nothing over the ID control,
+which is the claim worth making; a p50 measured on a laptop is not a production
+SLO and is not offered as one.
+
+**The benchmark was measuring a configuration nothing runs.** The service bounds
+torch's intra-op pool to four threads, because several concurrent requests each
+spawning a full-width pool oversubscribe the cores and degrade p95 far more than
+they improve throughput. `bench_latency.py` did not apply that bound, so it let
+torch size the pool to the whole machine: 23.2 ms p50 for an artifact the
+service itself served in 9.6 ms. It now applies the same bound.
+
+### What it cost to serve the model the project argues for
+
+The hybrid artifact first measured **538 ms p50** per recommendation through the
+endpoint, against 9.6 ms for `id` in the same session. Both causes were the same
+mistake — doing catalog-scale work to answer a question about 200 plays:
+
+| | p50 |
+|---|---|
+| as merged | 538.30 ms |
+| item table materialized once at load | 271.02 ms |
+| gather before projecting, not after | **12.01 ms** |
+
+The item table was being rebuilt per request. `SASRecScorer.score` hoists it out
+of its batch loop, which amortizes to nothing over a full-catalog evaluation of
+thousands of instances and to nothing at all when a request carries one history.
+It is now materialized once, at load, with invalidation handled structurally
+rather than by convention: `train()` and `_apply()` both drop the cached table,
+so entering training mode or moving device cannot serve vectors that no longer
+match the weights.
+
+The larger half was subtler. `ProjectedTextEmbedding` inherited its `forward`
+from the base class, which builds the entire `[171904, 128]` table and then
+indexes 200 rows out of it. Gathering first is the same arithmetic — indexing
+rows commutes with an unbiased right multiplication — and 860x less of it. That
+one was also being paid on every training step of the text and hybrid variants,
+where the sequence and its sampled negatives are both looked up this way: 175 ms
+to 46 ms per forward-and-backward over a 128x200 batch, 4x.
+
+Worth stating plainly because it is the kind of thing an offline metric never
+catches. Both variants had been producing correct numbers the whole time.
 
 **Cold start is not a special branch.** SASRec has no per-user parameters: it
 conditions on the sequence, not a user id. A new uploader needs no per-user
@@ -312,11 +448,30 @@ python scripts/download_lastfm1k.py                     # 672 MB, HTTPS required
 python scripts/build_dataset.py --data lastfm1k --path data/raw/lastfm-1k
 python scripts/run_baselines.py --data parquet \
     --path data/interim/lastfm1k-v1.parquet --min-count 20
-python scripts/build_embeddings.py --path data/interim/lastfm1k-v1.parquet --min-count 20
-python scripts/train.py --config configs/pretrain.yaml --data parquet \
-    --path data/interim/lastfm1k-v1.parquet --min-count 20
-python scripts/bench_latency.py --checkpoint artifacts/runs/id-real/best.pt
+python scripts/build_embeddings.py --path data/interim/lastfm1k-v1.parquet \
+    --min-count 20 --fetch-tags --tag-mode artist
+
+P=data/interim/lastfm1k-v1.parquet
+V=data/embeddings/latest.npy
+
+# the rows of the ablation; --variant selects one
+python scripts/train.py --config configs/pretrain.yaml --data parquet --path $P \
+    --min-count 20 --variant id --name id-real
+python scripts/train.py --config configs/pretrain.yaml --data parquet --path $P \
+    --min-count 20 --variant text_frozen --text-vectors $V --name text-tagged
+python scripts/train.py --config configs/pretrain.yaml --data parquet --path $P \
+    --min-count 20 --variant hybrid --text-vectors $V --name hybrid-norm
+
+python scripts/bench_latency.py --checkpoint artifacts/runs/hybrid-norm/best.pt
+
+# serve the artifact the tables are about
+MELOCHRON_CHECKPOINT=artifacts/runs/hybrid-norm/best.pt \
+    uvicorn melochron.serving.app:app --port 8000
 ```
+
+Baseline output is named after the corpus rather than the `--data` flag, so a
+personal export and the pretraining corpus cannot overwrite each other's
+tables, which they silently did once.
 
 ### On your own export
 
@@ -378,10 +533,27 @@ catalog) because it represents hours of rate-limited requests.
   filtered; Last.fm only scrobbles past ~50% of a track. Different implicit
   thresholds, not filtered versus unfiltered.
 - **Single seed.** No confidence intervals; small slices should be read as
-  directional.
+  directional. `cold_start` at n=79 is the one to treat most cautiously: the
+  hybrid result there is 21 hits, against 7 for the identical text vectors used
+  without a residual.
+- **The time-interval encoding is unablated.** Inter-event gaps are described
+  below as a design decision, and every run in this README has `use_time=True`.
+  Until a matched `use_time=False` run exists, that section is a design argument
+  and not a measured one — which is a weaker footing than everything else here.
+- **Latency is measured on a development laptop**, not on a deploy target, and
+  the absolute figures move with machine load. The variant comparison is stable;
+  the absolute is not an SLO.
 
 ## Not yet done
 
-The `text_finetuned` and `hybrid` rows on the personal corpus, a `max_len` sweep
-(the measured binding constraint), the time-delta ablation, and deployment. The
-frontend that would consume the insight JSON is not built.
+- **The `hybrid` row on the personal corpus.** The cross-catalog transplant
+  accepts it and installs an all-zero residual, so the path is built and
+  verified; the table row is not run. Prediction worth recording in advance: a
+  *zero-shot* hybrid should beat zero-shot `text_frozen`, because on a new
+  catalog every item is cold from the residual's point of view and per-row
+  normalization is exactly the correction that regime needs.
+- **The time-delta ablation** — the one unmeasured design claim in this README.
+- **A `max_len` sweep**, the measured binding constraint on a personal corpus.
+- **Deployment.** The service runs locally and is not hosted anywhere.
+- **A frontend for the insight JSON.** The upload-and-recommend surface exists;
+  drift, archetypes and attention are computed but only ever written to disk.
