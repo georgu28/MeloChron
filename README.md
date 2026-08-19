@@ -17,15 +17,17 @@ one that counts.
 ## What the numbers say
 
 - **A model pretrained on 992 strangers ranks tracks it has never seen, in a
-  catalog it has never seen, at 26x chance — with zero gradient steps on the
+  catalog it has never seen, at 35x chance — with zero gradient steps on the
   user's data.** A model trained on that user's own listening scores *exactly
   zero* on the same tracks.
 - **Pretraining, not the text representation, is what buys that.** An identical
   architecture with identical text vectors, trained from scratch instead of
-  loaded, scores 3.1x worse.
-- **Per-user fine-tuning bought 4 extra hits out of 2,601** (+2.8% at k=10). The
-  design bar was "adaptation ships only on a measured delta"; at k=10 it fails
-  that bar, and clearly helps only on tracks the user already plays.
+  loaded, scores 4.2x worse.
+- **Per-user fine-tuning is negative on the slice that motivated the design.**
+  Measured against a baseline whose text distribution actually matches, it loses
+  9 hits out of 2,601 on cold start rather than gaining 4. It is a large win on
+  catalog the user already plays (+27% overall) and a cost on everything else,
+  so the deployable answer is two artifacts and not one.
 - **Every non-neural baseline scores exactly 0.0000 on the strict transfer
   slice.** Popularity, repeat and item-kNN are all collaborative or
   memorization-based, so a track absent from training is unrankable for all of
@@ -210,50 +212,131 @@ sessions, repeat rate **0.9435**. Unlike lastfm-1K it carries real `ms_played`,
 On lastfm the `cold_start` slice was n=79; here it is **n=2,601**, so the
 transfer claim finally has statistical power.
 
-Catalog 18,450 items (`min_count=1`), 20,000 instances.
-**Chance HR@10 = 0.000542.**
+Catalog 18,450 items (`min_count=1`), 20,000 instances, every row below scored
+in one invocation of `scripts/run_transfer.py` so all eight models meet the same
+instances. **Chance HR@10 = 0.000542.**
 
-| slice | n | popularity | repeat | zero-shot | scratch (id) | scratch (text) | fine-tuned |
-|---|---|---|---|---|---|---|---|
-| overall | 20,000 | 0.0046 | 0.0191 | 0.0202 | **0.0343** | 0.0204 | 0.0267 |
-| repeat | 17,399 | 0.0053 | 0.0219 | 0.0210 | **0.0394** | 0.0228 | 0.0284 |
-| **novel** | 2,601 | 0.0000 | 0.0000 | 0.0142 | 0.0000 | 0.0046 | **0.0146** |
-| cold_item | 9,795 | 0.0000 | 0.0120 | 0.0175 | 0.0000 | 0.0056 | **0.0177** |
-| **cold_start** | 2,601 | 0.0000 | 0.0000 | 0.0142 | 0.0000 | 0.0046 | **0.0146** |
+| slice | n | popularity | repeat | scratch (id) | zero-shot | **fine-tuned** |
+|---|---|---|---|---|---|---|
+| overall | 20,000 | 0.0046 | 0.0191 | 0.0343 | 0.0286 | **0.0435** |
+| repeat | 17,399 | 0.0053 | 0.0219 | 0.0394 | 0.0300 | **0.0479** |
+| novel | 2,601 | 0.0000 | 0.0000 | 0.0000 | **0.0192** | 0.0146 |
+| cold_item | 9,795 | 0.0000 | 0.0120 | 0.0000 | **0.0216** | 0.0197 |
+| **cold_start** | 2,601 | 0.0000 | 0.0000 | 0.0000 | **0.0192** | 0.0146 |
+
+`zero-shot` and `fine-tuned` are both the **hybrid** representation.
 
 | column | what it is |
 |---|---|
-| **zero-shot** | the lastfm-pretrained encoder re-pointed at this catalog, **no gradient step on this user** |
-| **scratch (id)** | ID embeddings trained on this user alone |
-| **scratch (text)** | same architecture and text vectors as fine-tuned, randomly initialized — the control isolating pretraining |
-| **fine-tuned** | zero-shot, then trained on this user's train period |
+| **scratch (id)** | ID embeddings trained on this user alone, from noise |
+| **zero-shot** | the lastfm-pretrained hybrid encoder re-pointed at this catalog, **no gradient step on this user** |
+| **fine-tuned** | that same transplant, then trained on this user's train period |
 
 The transplant works because only the item table is catalog-shaped: the learned
 384→128 projection and the transformer blocks are the same size for any catalog,
-so 37 tensors transfer and the new catalog arrives as a new text matrix
-(`melochron/train/transfer.py`).
+so 38 tensors transfer and the new catalog arrives as a new text matrix plus an
+all-zero residual (`melochron/train/transfer.py`).
 
-**The two winners sit in different columns.** On seen tracks, memorizing your
-own catalog wins outright — `scratch (id)` takes `repeat` at 0.0394 against
-zero-shot's 0.0210. On unseen tracks it scores exactly zero, and the zero-shot
-model, which has never seen this person or this catalog, is the only thing that
-scores at all.
+**Fine-tuned hybrid is the first model here to be good at both jobs.** It takes
+`overall` at 0.0435 against `scratch (id)`'s 0.0343 — +27.0%, 6.4 standard
+errors at n=20,000 — while scoring 0.0146 on tracks `scratch (id)` cannot rank
+at all. Every earlier configuration forced a choice between the two.
 
-**Pretraining, not text, is what buys cold start.** `scratch (text)` differs
-from zero-shot *only* by initialization and reaches 0.0046 against 0.0142 — a
-**3.1x gap attributable to weights learned from 992 other listeners**. Text
-representation lifts the floor off zero; pretraining makes the capability
-useful rather than nominal. Same ordering on `cold_item`: 0.0056 vs 0.0175.
+**And it is still beaten on cold start by doing nothing.** Zero-shot scores
+0.0192 there against fine-tuned's 0.0146, a 24% drop from adapting to the user
+(2.0 SE). The same thing happens to the text variant, −19.1%, and text has no
+residual, so this is the general cost of specializing an encoder on one
+listener's catalog rather than anything specific to the hybrid.
 
-**Fine-tuning bought almost nothing where it counts.** `novel` moves 0.0142 →
-0.0146: four extra hits out of 2,601. Two honest qualifications — at HR@**20**
-the same comparison is 0.0238 → 0.0311 (+31%), so the benefit is real but
-k-dependent, and fine-tuning clearly helps on *seen* items (+35% on `repeat`).
-The deployable reading: zero-shot suffices for cold start; adaptation earns its
-keep only on catalog the user already plays.
+The deployable reading is unchanged in shape and sharper in detail: **fine-tune
+for the catalog someone already plays, keep the zero-shot model for discovery.**
+Two artifacts, chosen per request, is a real design conclusion drawn from a
+measurement rather than an architecture diagram.
 
-On unseen tracks the ranking is **pretraining >> text representation >
-adaptation** — close to the opposite of where engineering effort naturally goes.
+### A correction to what this section used to say
+
+It previously reported that fine-tuning "bought 4 extra hits out of 2,601" on
+`cold_start`. That comparison was against a broken baseline and the sign is
+wrong.
+
+The zero-shot row was transplanted from `text-frozen-real`, whose projection was
+trained on text with `tag_coverage: 0.0` — bare `"Track by Artist"` strings —
+and then pointed at personal vectors with `tag_coverage: 0.8672`, which carry
+`Genre: ...` clauses that projection had never seen. Nothing errors; the numbers
+just come out low. Scored from a pretrain whose text matches, `zero-shot` on
+`cold_start` is **0.0181, not 0.0142** — 47 hits rather than 37.
+
+Against a matched baseline, fine-tuning does not buy 4 hits. It **loses 9**.
+
+| | cold_start HR@10 | hits of 2,601 |
+|---|---|---|
+| zero-shot, names-only pretrain (what was published) | 0.0142 | 37 |
+| zero-shot, matched tagged pretrain | **0.0181** | **47** |
+| fine-tuned text | 0.0146 | 38 |
+
+The design bar was "adaptation ships only on a measured delta". It does not
+merely fail to clear the bar; measured properly it is negative on the slice that
+motivated the whole transfer design.
+
+### Text against hybrid, matched on both sides
+
+Same pretraining corpus, same tagged text, same instances; only the item
+representation differs.
+
+| | overall | cold_item | cold_start |
+|---|---|---|---|
+| zero-shot text | 0.0261 | 0.0210 | 0.0181 |
+| **zero-shot hybrid** | **0.0286** | **0.0216** | **0.0192** |
+| fine-tuned text | 0.0267 | 0.0177 | 0.0146 |
+| **fine-tuned hybrid** | **0.0435** | **0.0197** | 0.0146 |
+
+Before running this the prediction recorded in this README was that zero-shot
+hybrid should beat zero-shot text, because on a new catalog every residual row
+is zero and hybrid's per-row normalization is exactly the correction that regime
+needs. **The direction held at every k and only the aggregate is out of the
+noise**: +9.6% on `overall` is 2.1 SE, while `cold_start` is 50 hits against 47,
+which is 0.4 SE and means nothing on its own. A prediction that comes true by
+three hits has not been confirmed, and is recorded here as directional.
+
+**Pretraining, not text representation, is what buys cold start.**
+`scratch (text)` differs from `zero-shot` only by initialization and reaches
+0.0046 against 0.0192 — a **4.2x gap attributable to weights learned from 992
+other listeners**. Text lifts the floor off zero; pretraining makes the
+capability useful rather than nominal.
+
+On unseen tracks the ranking is **pretraining >> item representation >
+adaptation**, with adaptation actively negative — close to the reverse of where
+engineering effort naturally goes.
+
+### The zero-residual guarantee has a precondition, and this config broke it
+
+`item_repr.py` argues that a cold item falls back to its pure text vector
+because its residual never receives gradient: never a positive, since it is
+absent from the training period, and never a negative, since popularity sampling
+weights by training count and a count of zero is drawn with probability zero.
+
+**That second clause is a property of the negative sampler, not of the model.**
+`configs/personal.yaml` sets `popularity_negatives: false`, for a good and
+unrelated reason — with a single listener, popularity-weighted negatives drawn
+from that listener's own counts put the positive into its own softmax
+denominator. Under uniform sampling every row is reachable:
+
+| | negatives | residual rows still exactly zero |
+|---|---|---|
+| lastfm pretrain | popularity^0.75 | 7,306 of 171,904 |
+| personal fine-tune | uniform | **3 of 18,452** |
+
+At 40 steps per epoch, 512 shared negatives and 60 epochs, that is 1.2M draws
+over 18,452 items: the chance a given row is never touched is ~1e-29, and the
+three survivors are the rows that structurally cannot receive gradient. Cold
+items are never positives, so what they collect is exclusively *negative*
+gradient — pushed away from every context they appear in and never pulled toward
+one.
+
+Two configuration choices, each defensible alone, whose interaction disables the
+mechanism the representation is built around. Neither file mentions the other.
+This is offered as a diagnosis and not as the explanation of the cold-start drop
+above, because the text variant has no residual at all and dropped too.
 
 ### Why the two corpora are not comparable
 
@@ -606,12 +689,11 @@ catalog) because it represents hours of rate-limited requests.
 
 ## Not yet done
 
-- **The `hybrid` row on the personal corpus.** The cross-catalog transplant
-  accepts it and installs an all-zero residual, so the path is built and
-  verified; the table row is not run. Prediction worth recording in advance: a
-  *zero-shot* hybrid should beat zero-shot `text_frozen`, because on a new
-  catalog every item is cold from the residual's point of view and per-row
-  normalization is exactly the correction that regime needs.
+- **A negative sampler that keeps the zero-residual guarantee on one user.**
+  Popularity weighting is wrong at n=1 and uniform sampling touches every row;
+  something that excludes count-zero items without weighting by a single
+  listener's counts would let the hybrid keep its cold-start fallback while
+  adapting. Not attempted.
 - **A `max_len` sweep**, the measured binding constraint on a personal corpus.
 - **Deployment.** The service runs locally and is not hosted anywhere.
 - **A frontend for the insight JSON.** The upload-and-recommend surface exists;

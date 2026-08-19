@@ -1,8 +1,9 @@
 """The transfer table: zero-shot, fine-tuned and from-scratch on one catalog.
 
     python scripts/run_transfer.py --path data/interim/spotify-v1.parquet \
-        --text-vectors data/embeddings/latest.npy \
-        --pretrained artifacts/runs/text-frozen-real/best.pt \
+        --text-vectors data/embeddings/text-a2153cdb8d2b123a.npy \
+        --pretrained zero-shot-text=artifacts/runs/text-tagged/best.pt \
+        --pretrained zero-shot-hybrid=artifacts/runs/hybrid-norm/best.pt \
         --checkpoint scratch-id=artifacts/runs/personal-id/best.pt \
         --min-count 1 --max-per-user 20000
 
@@ -70,7 +71,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--path", type=Path, required=True, help="parquet from build_dataset.py")
     ap.add_argument("--text-vectors", type=Path, help=".npy aligned to this run's vocabulary")
     ap.add_argument(
-        "--pretrained", type=Path, help="checkpoint to transplant for the zero-shot row"
+        "--pretrained",
+        type=_named,
+        action="append",
+        default=[],
+        metavar="NAME=PATH",
+        help="checkpoint to transplant for a zero-shot row, repeatable",
     )
     ap.add_argument(
         "--checkpoint",
@@ -142,11 +148,19 @@ def main(argv: list[str] | None = None) -> int:
         if not args.text_vectors:
             raise SystemExit("--pretrained needs --text-vectors for this catalog")
         text = torch.from_numpy(np.load(args.text_vectors)).float()
-        transplant = transfer.load_for_catalog(
-            str(args.pretrained), text, vc, device=args.device, name="zero-shot"
-        )
-        print(f"zero-shot             {transplant.card()}")
-        scorers.append(transplant.scorer)
+        # Repeatable, because comparing two pretrained encoders zero-shot on the
+        # same catalog is a transfer question and this is the transfer table.
+        # Scoring them in one invocation is also the only way to guarantee they
+        # meet the same instances rather than two runs that merely used the same
+        # flags.
+        for name, path in args.pretrained:
+            if not path.exists():
+                raise SystemExit(f"pretrained checkpoint not found: {path}")
+            transplant = transfer.load_for_catalog(
+                str(path), text, vc, device=args.device, name=name
+            )
+            print(f"{name:<21} {transplant.card()}")
+            scorers.append(transplant.scorer)
 
     for name, path in args.checkpoint:
         if not path.exists():
@@ -184,7 +198,7 @@ def main(argv: list[str] | None = None) -> int:
         "repeat_rate": round(sessions.repeat_rate(all_seqs), 4),
         "cutoff_ts": split.cutoff_ts,
         "max_len": args.max_len,
-        "pretrained": str(args.pretrained) if args.pretrained else None,
+        "pretrained": {name: str(path) for name, path in args.pretrained} or None,
         "ranking": "full catalog, pessimistic ties",
         "chance_hr10": round(10 / vc.n_items, 6),
         "runtime_s": round(time.time() - started, 1),
