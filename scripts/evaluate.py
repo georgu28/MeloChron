@@ -117,6 +117,13 @@ def main(argv: list[str] | None = None) -> int:
         "vocab_items": vc.n_items,
         "events": len(events),
         "instances": len(instances),
+        # Two checkpoints are only comparable if they were scored over the same
+        # instances, and the flags below are what decide that. Recorded next to
+        # the numbers so a later reader can check rather than assume.
+        "test_frac": args.test_frac,
+        "holdout_user_frac": args.holdout_user_frac,
+        "max_per_user": args.max_per_user,
+        "seed": args.seed,
         "ranking": "full catalog, pessimistic ties",
         "runtime_s": round(time.time() - started, 1),
     }

@@ -244,6 +244,18 @@ def main(argv: list[str] | None = None) -> int:
         "vocab_items": vc.n_items,
         "repeat_rate": round(sessions.repeat_rate(all_seqs), 4),
         "min_count": args.min_count,
+        # The flags that define which instances the table was computed over.
+        # Without these two runs produce tables that look directly comparable
+        # and are not: a time-encoding ablation was once scored against 10,596
+        # instances and its control against 5,334, and nothing in either report
+        # said so. Hyperparameters were already recorded; the evaluation set was
+        # not, which is the half that decides whether two numbers can be
+        # subtracted.
+        "test_frac": args.test_frac,
+        "holdout_user_frac": args.holdout_user_frac,
+        "max_per_user": args.max_per_user,
+        "eval_instances": len(test_instances),
+        "seed": args.seed,
         "best_epoch": state.best_epoch,
         "best_val": round(state.best_metric, 5),
         "ranking": "full catalog, pessimistic ties",
