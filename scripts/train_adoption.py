@@ -103,6 +103,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--epochs", type=int, default=20)
     ap.add_argument("--batch-size", type=int, default=512)
     ap.add_argument("--item-variant", default="id")
+    ap.add_argument(
+        "--text-matrix",
+        type=Path,
+        default=None,
+        help="content matrix for text/hybrid variants (default: <features>/genres.npy); "
+        "e.g. musicnn.npy to test learned audio instead of coarse genre",
+    )
     ap.add_argument("--no-time", action="store_true", help="position-only ablation")
     ap.add_argument("--heads", nargs="+", default=["pure", "priors"], choices=["pure", "priors"])
     ap.add_argument("--bootstrap", type=int, default=100)
@@ -122,7 +129,12 @@ def main(argv: list[str] | None = None) -> int:
     torch.set_float32_matmul_precision("high")
 
     compact = CompactCorpus.load(args.store, mmap=True)
-    table = EncounterTable(**{c: np.load(args.labels / f"{c}.npy") for c in COLUMNS})
+    # Memory-map the label columns rather than loading them resident. They are
+    # ~1.2 GB across the six columns, and on a small-RAM box that anonymous block
+    # is exactly what starves the memmapped corpus of page cache and sends the
+    # per-batch window gathers into swap. The training loop copies only the rows
+    # it needs into `Examples`, so lazy paging here costs nothing per epoch.
+    table = EncounterTable(**{c: np.load(args.labels / f"{c}.npy", mmap_mode="r") for c in COLUMNS})
     manifest = json.loads((args.labels / "manifest.json").read_text(encoding="utf-8"))
     horizon = event_horizon(compact, table, manifest["event_n"])
     split = temporal_split(table, compact.n_users, seed=manifest["seed"])
@@ -162,6 +174,25 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     n_items = compact.n_tracks + 1  # +1 for the reserved pad slot at id 0
+
+    # For text/hybrid variants, the item representation is the genre matrix aligned
+    # to model ids. Model id 0 is the pad slot and ids 1..n_tracks are track_code+1
+    # (the same +1 the window builder and candidate ids use), so a zero row is
+    # prepended. `ProjectedTextEmbedding` additionally zeroes oov_id=1 — that lands
+    # on track_code 0, one warm track, which then behaves as ID-only under hybrid;
+    # negligible and it does not touch the cold-item test (cold ids are never id 1).
+    text_vectors = None
+    if args.item_variant != "id":
+        matrix_path = args.text_matrix or (args.features / "genres.npy")
+        content = np.load(matrix_path).astype(np.float32)
+        text_vectors = torch.from_numpy(
+            np.vstack([np.zeros((1, content.shape[1]), dtype=np.float32), content])
+        )
+        print(
+            f"item representation '{args.item_variant}' from {matrix_path.name}: "
+            f"text_vectors {tuple(text_vectors.shape)}"
+        )
+
     cohort_users = table.user_code[rows]
     cohort_labels = labels[rows]
 
@@ -199,6 +230,7 @@ def main(argv: list[str] | None = None) -> int:
             use_time=not args.no_time,
             use_priors=use_priors,
             item_variant=args.item_variant,
+            text_vectors=text_vectors,
         ).to(device)
         examples = build_examples(table, labels, fit_rows, priors if use_priors else None)
         config = TrainConfig(
