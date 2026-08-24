@@ -38,11 +38,17 @@ class AdoptionHead(nn.Module):
     """MLP mapping ``[h, c, h⊙c]`` (+ optional priors) to one adoption logit."""
 
     def __init__(
-        self, d_model: int, hidden: int = 128, use_priors: bool = False, dropout: float = 0.2
+        self,
+        d_model: int,
+        hidden: int = 128,
+        use_priors: bool = False,
+        dropout: float = 0.2,
+        n_prior_features: int = N_PRIOR_FEATURES,
     ):
         super().__init__()
         self.use_priors = use_priors
-        in_features = 3 * d_model + (N_PRIOR_FEATURES if use_priors else 0)
+        self.n_prior_features = n_prior_features
+        in_features = 3 * d_model + (n_prior_features if use_priors else 0)
         self.net = nn.Sequential(
             nn.Linear(in_features, hidden),
             nn.GELU(),
@@ -86,6 +92,7 @@ class AdoptionModel(nn.Module):
         text_vectors: Tensor | None = None,
         head_hidden: int = 128,
         pad_id: int = 0,
+        n_prior_features: int = N_PRIOR_FEATURES,
     ):
         super().__init__()
         self.config = {
@@ -100,6 +107,7 @@ class AdoptionModel(nn.Module):
             "item_variant": item_variant,
             "head_hidden": head_hidden,
             "pad_id": pad_id,
+            "n_prior_features": n_prior_features,
         }
         item_repr = build_item_representation(item_variant, n_items, d_model, text_vectors, pad_id)
         self.encoder = SASRec(
@@ -113,7 +121,13 @@ class AdoptionModel(nn.Module):
             pad_id=pad_id,
             item_repr=item_repr,
         )
-        self.head = AdoptionHead(d_model, head_hidden, use_priors=use_priors, dropout=dropout)
+        self.head = AdoptionHead(
+            d_model,
+            head_hidden,
+            use_priors=use_priors,
+            dropout=dropout,
+            n_prior_features=n_prior_features,
+        )
         self.use_priors = use_priors
         self.pad_id = pad_id
 

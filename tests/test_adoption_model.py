@@ -155,6 +155,24 @@ class TestModelInvariance:
         with pytest.raises(ValueError, match="got no priors"):
             model(item, dt, cand, None)
 
+    def test_three_prior_features_widen_the_head_and_forward(self):
+        # The incontext experiment feeds a third scalar prior (user-prior,
+        # item-rate, incontext-rate). The head must widen to accept it: its first
+        # Linear takes 3*d_model + 3 = 51 inputs at d_model=16, not 50.
+        model = AdoptionModel(
+            n_items=32, d_model=16, max_len=8, use_priors=True, n_prior_features=3
+        )
+        assert model.head.net[0].in_features == 3 * 16 + 3
+        item = torch.zeros(2, 8, dtype=torch.long)
+        dt = torch.zeros(2, 8, dtype=torch.long)
+        cand = torch.ones(2, dtype=torch.long)
+        priors = torch.rand(2, 3)
+
+        out = model(item, dt, cand, priors)
+
+        assert out.shape == (2,)
+        assert model.config["n_prior_features"] == 3
+
 
 class TestTraining:
     def _synthetic(self, n_users=40, per_user=30, seed=0):
