@@ -19,6 +19,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch import Tensor, nn
+from tqdm import tqdm
 
 from melochron.adoption import metrics
 from melochron.adoption.model import AdoptionModel
@@ -168,6 +169,7 @@ def train(
     device: torch.device,
     validation_frac: float = 0.1,
     compile: bool = False,
+    progress: bool = True,
 ) -> dict:
     """Fit the model, early-stopping on a temporal validation slice.
 
@@ -206,7 +208,22 @@ def train(
         model.train()
         order = rng.permutation(fit_rows)
         epoch_loss = 0.0
-        for start in range(0, order.shape[0], config.batch_size):
+        seen = 0
+        # One bar per epoch. `loss.item()` below already syncs each step, so the
+        # postfix is free; `mininterval` throttles redraws so a nohup log gets a
+        # readable trickle rather than thousands of lines. Batches/s and ETA come
+        # from tqdm itself. Disabled by `progress=False` for quiet test runs.
+        starts = range(0, order.shape[0], config.batch_size)
+        bar = tqdm(
+            starts,
+            total=steps_per_epoch,
+            desc=f"epoch {epoch:2d}",
+            unit="batch",
+            mininterval=2.0,
+            leave=False,
+            disable=not progress,
+        )
+        for start in bar:
             rows = order[start : start + config.batch_size]
             item_ids, time_deltas, candidate_ids, priors, labels = _batch_tensors(
                 corpus, examples, rows, config.max_len, device
@@ -225,7 +242,10 @@ def train(
             scaler.update()
 
             epoch_loss += loss.item() * rows.shape[0]
+            seen += rows.shape[0]
             step += 1
+            bar.set_postfix(loss=f"{epoch_loss / max(seen, 1):.4f}", refresh=False)
+        bar.close()
 
         probs = predict(model, corpus, val, config.max_len, device, forward=run)
         val_score = metrics.evaluate(val.labels, probs, val.users, "val")
@@ -285,7 +305,18 @@ def save_checkpoint(path: Path, model: AdoptionModel, config: TrainConfig, metri
 
 def load_checkpoint(path: Path, device: torch.device | str = "cpu") -> tuple[AdoptionModel, dict]:
     payload = torch.load(path, map_location=device, weights_only=True)
-    model = AdoptionModel(**payload["model_config"])
+    config = dict(payload["model_config"])
+    kwargs = {}
+    # Text/hybrid variants need a `text_vectors` tensor to *construct* the module,
+    # but the config never carries the 155 MB matrix. Its shape lives in the saved
+    # buffer, so a zero placeholder of that shape rebuilds the architecture and
+    # `load_state_dict` immediately fills it with the real (already pad/oov-zeroed)
+    # values — the checkpoint is self-contained, no genre file needed to reload.
+    if config.get("item_variant", "id") != "id":
+        sd = payload["state_dict"]
+        key = next(k for k in sd if k.endswith("text_vectors"))
+        kwargs["text_vectors"] = torch.zeros_like(sd[key])
+    model = AdoptionModel(**config, **kwargs)
     model.load_state_dict(payload["state_dict"])
     model.to(device)
     model.eval()
