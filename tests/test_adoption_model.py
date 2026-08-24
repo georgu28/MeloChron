@@ -173,6 +173,35 @@ class TestModelInvariance:
         assert out.shape == (2,)
         assert model.config["n_prior_features"] == 3
 
+    def test_residual_base_reduces_to_logit_of_the_base(self):
+        # With the correction MLP zeroed, a residual_base head must return
+        # logit(base), not the base itself: base 0.6 -> 0.4055, not 0.6.
+        model = AdoptionModel(
+            n_items=32, d_model=16, max_len=8, use_priors=False, residual_base=True
+        )
+        model.eval()
+        with torch.no_grad():
+            model.head.net[-1].weight.zero_()
+            model.head.net[-1].bias.zero_()
+        item = torch.zeros(3, 8, dtype=torch.long)
+        dt = torch.zeros(3, 8, dtype=torch.long)
+        cand = torch.ones(3, dtype=torch.long)
+        base = torch.tensor([0.2, 0.6, 0.9])
+
+        out = model(item, dt, cand, base.unsqueeze(1))
+
+        assert out.shape == (3,)
+        assert torch.allclose(out, torch.logit(base.clamp(1e-4, 1 - 1e-4)), atol=1e-5)
+
+    def test_residual_base_config_round_trips(self, tmp_path):
+        model = AdoptionModel(n_items=32, d_model=16, max_len=8, residual_base=True)
+        save_checkpoint(tmp_path / "r.pt", model, TrainConfig(), {"best_val_pr_auc": 0.5})
+
+        reloaded, _ = load_checkpoint(tmp_path / "r.pt", "cpu")
+
+        assert reloaded.config["residual_base"] is True
+        assert reloaded.head.residual_base is True
+
 
 class TestTraining:
     def _synthetic(self, n_users=40, per_user=30, seed=0):

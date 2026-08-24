@@ -44,11 +44,20 @@ class AdoptionHead(nn.Module):
         use_priors: bool = False,
         dropout: float = 0.2,
         n_prior_features: int = N_PRIOR_FEATURES,
+        residual_base: bool = False,
     ):
         super().__init__()
         self.use_priors = use_priors
         self.n_prior_features = n_prior_features
-        in_features = 3 * d_model + (n_prior_features if use_priors else 0)
+        # residual_base: the MLP sees only the sequence features and predicts a
+        # *correction* to logit(base), where the base is priors[:, 0]. The base is
+        # added at the output with a fixed coefficient of 1, never concatenated, so
+        # the head cannot down-weight it -- any gain over the base is genuinely from
+        # the sequence. Concatenating priors (the other mode) lets a train-fit head
+        # dilute the base, which is exactly what this variant exists to avoid.
+        self.residual_base = residual_base
+        concat_priors = use_priors and not residual_base
+        in_features = 3 * d_model + (n_prior_features if concat_priors else 0)
         self.net = nn.Sequential(
             nn.Linear(in_features, hidden),
             nn.GELU(),
@@ -58,15 +67,20 @@ class AdoptionHead(nn.Module):
 
     def forward(self, history: Tensor, candidate: Tensor, priors: Tensor | None = None) -> Tensor:
         features = [history, candidate, history * candidate]
-        if self.use_priors:
+        if self.use_priors and not self.residual_base:
             if priors is None:
                 raise ValueError("this head was built with use_priors=True but got no priors")
             # Logit-space, matching how `user × item` combines them, and clamped
             # so a prior of exactly 0 or 1 does not become an infinite feature.
             features.append(torch.logit(priors.clamp(1e-4, 1 - 1e-4)))
-        elif priors is not None:
+        elif priors is not None and not self.use_priors and not self.residual_base:
             raise ValueError("this head has use_priors=False but was given priors")
-        return self.net(torch.cat(features, dim=-1)).squeeze(-1)
+        logits = self.net(torch.cat(features, dim=-1)).squeeze(-1)
+        if self.residual_base:
+            if priors is None:
+                raise ValueError("residual_base head needs the base rate in priors[:, 0]")
+            logits = logits + torch.logit(priors[..., 0].clamp(1e-4, 1 - 1e-4))
+        return logits
 
 
 class AdoptionModel(nn.Module):
@@ -93,6 +107,7 @@ class AdoptionModel(nn.Module):
         head_hidden: int = 128,
         pad_id: int = 0,
         n_prior_features: int = N_PRIOR_FEATURES,
+        residual_base: bool = False,
     ):
         super().__init__()
         self.config = {
@@ -108,6 +123,7 @@ class AdoptionModel(nn.Module):
             "head_hidden": head_hidden,
             "pad_id": pad_id,
             "n_prior_features": n_prior_features,
+            "residual_base": residual_base,
         }
         item_repr = build_item_representation(item_variant, n_items, d_model, text_vectors, pad_id)
         self.encoder = SASRec(
@@ -127,8 +143,10 @@ class AdoptionModel(nn.Module):
             use_priors=use_priors,
             dropout=dropout,
             n_prior_features=n_prior_features,
+            residual_base=residual_base,
         )
         self.use_priors = use_priors
+        self.residual_base = residual_base
         self.pad_id = pad_id
 
     def candidate_vectors(self, candidate_ids: Tensor) -> Tensor:
