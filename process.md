@@ -37,6 +37,25 @@ adoption probability, and what actually happened.
 
 ---
 
+## Repository scope — the next-track project was removed
+
+This repo began as a *next-track* recommender (a SASRec ranking model, serving app,
+transfer/insights work). The adoption effort reused its encoder but is a distinct
+task, and keeping both made the repo confusing to read. The next-track code, its
+scripts, tests, configs, and README were therefore **removed** (commit
+`chore: remove the next-track project, keeping the reused encoder`) — recoverable
+in full from git history at commit `82d4cbf` and earlier.
+
+**Kept, because adoption reuses it:** the encoder —
+`melochron/models/{sasrec, item_repr, time_encoding}.py` — plus `melochron/net.py`
+(download helper). Everything else under `melochron/` is now `adoption/`. What the
+next-track project established, in one line: the transferable value is the encoder,
+and its headline finding (a frozen-text-plus-residual *hybrid* item representation)
+is exactly what the adoption **audio-features** section here re-tested and partly
+overturned.
+
+---
+
 ## The plan (roadmap, phases 0–5)
 
 | Phase | Goal | Output | Status |
