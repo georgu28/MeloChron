@@ -1,36 +1,19 @@
 [project]
 name = "melochron"
 version = "0.1.0"
-description = "Sequential music recommendation from listening history"
-# Narrowed from >=3.11: 3.13 is the only interpreter this has been run on, and
-# an untested floor is a claim that cannot be backed.
-requires-python = ">=3.13"
+description = "Adoption prediction: will a listener return to a track they just met?"
+requires-python = ">=3.11"
 dependencies = [
     "numpy>=2.0",
-    "pandas>=2.2",
     "pyarrow>=16.0",
     "scikit-learn>=1.5",
-    "sentence-transformers>=5.0",
-    "requests>=2.32",
-    "pyyaml>=6.0",
     "tqdm>=4.66",
 ]
 
 [project.optional-dependencies]
-# torch is declared here, not in the base dependencies, so that the index can
-# differ by environment: training installs the CUDA build explicitly, e.g.
+# torch is an extra, not a base dependency, so the index can differ by
+# environment: training installs the CUDA build explicitly, e.g.
 #   pip install torch --index-url https://download.pytorch.org/whl/cu126
-# while the deployed service should resolve the CPU wheel
-#   pip install -e ".[serve]" --extra-index-url https://download.pytorch.org/whl/cpu
-# A CUDA wheel is ~2.6 GB and the Phase 5 target has no GPU and ~5 concurrent
-# users. Leaving torch undeclared entirely produced a `serve` environment that
-# could not load the checkpoint it was meant to serve.
-serve = [
-    "torch>=2.5",
-    "fastapi>=0.116",
-    "uvicorn[standard]>=0.30",
-    "python-multipart>=0.0.9",
-]
 train = [
     "torch>=2.5",
 ]
