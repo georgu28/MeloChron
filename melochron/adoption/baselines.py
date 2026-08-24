@@ -191,3 +191,61 @@ def fit_user_item(
 def score_user_item(model, priors: Priors, users: np.ndarray, tracks: np.ndarray) -> np.ndarray:
     features = np.column_stack([_logit(priors.user_rate[users]), _logit(priors.item_rate[tracks])])
     return model.predict_proba(features)[:, 1]
+
+
+def incontext_user_rate(
+    user_code: np.ndarray,
+    encounter_pos: np.ndarray,
+    resolution_pos: np.ndarray,
+    label: np.ndarray,
+    pool_mask: np.ndarray,
+    query_rows: np.ndarray,
+    prior: float,
+    pseudocount: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Shrunk running per-user adoption rate, computed at inference with no look-ahead.
+
+    This is the baseline that adjudicates the ``cold_user`` win. A held-out user
+    has no *train* row, so every train-fitted prior falls back to global for them
+    -- but a deployment still *observes* that user's history as it arrives. This
+    estimates, for each encounter, the user's adoption rate over their own prior
+    first-encounters, exactly what the encoder could be silently recovering.
+
+    **No look-ahead.** A prior encounter ``j`` counts toward query ``i`` only once
+    its horizon has *closed* -- ``resolution_pos[j] < encounter_pos[i]`` -- where
+    ``resolution_pos`` is the recurrence position for adopted pairs and
+    ``encounter_pos + N`` otherwise. Without that gate the rate would borrow the
+    labels of the most recent up-to-N encounters, whose outcome is not yet known
+    at ``i``; the encoder's causal window forbids exactly this, so the baseline
+    must too or the comparison is rigged in the baseline's favour.
+
+    Shrinkage matches :func:`shrunk_rate`: ``(pos + pseudocount*prior) /
+    (seen + pseudocount)``, both fitted train-side, so a query with no resolved
+    prior encounters -- every held-out user's first one -- returns ``prior``.
+
+    ``pool_mask`` marks encounters eligible to contribute (test, observable,
+    plausible). Returns ``(rate, seen)`` for ``query_rows`` in order; ``seen`` is
+    the number of resolved prior encounters behind each estimate.
+    """
+    pool = np.flatnonzero(pool_mask)
+    # Pack (user, resolution_pos) into one sortable key. Both are non-negative and
+    # small, so user * BIG + resolution is exact and orders by user then by when
+    # the label became known.
+    big = int(max(int(encounter_pos.max()), int(resolution_pos.max()))) + 1
+    pkey = user_code[pool].astype(np.int64) * big + resolution_pos[pool].astype(np.int64)
+    order = np.argsort(pkey, kind="stable")
+    pkey = pkey[order]
+    # Prefix sum of positives over resolution order (length len(pool)+1).
+    cum_pos = np.concatenate([[0.0], np.cumsum(label[pool][order].astype(np.float64))])
+
+    qu = user_code[query_rows].astype(np.int64)
+    qpos = encounter_pos[query_rows].astype(np.int64)
+    # Pool entries for this user with resolution strictly before the query, via two
+    # searches: everything below (user, qpos) minus everything below (user, 0).
+    hi = np.searchsorted(pkey, qu * big + qpos, side="left")
+    lo = np.searchsorted(pkey, qu * big, side="left")
+    seen = (hi - lo).astype(np.float64)
+    pos = cum_pos[hi] - cum_pos[lo]
+
+    rate = (pos + pseudocount * prior) / (seen + pseudocount)
+    return rate, seen

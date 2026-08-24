@@ -291,3 +291,55 @@ class TestFeatureMatrix:
 
         assert norms[0] == 0.0
         assert norms[1] == pytest.approx(5.0)
+
+
+class TestIncontextUserRate:
+    """The running per-user rate that adjudicates the cold_user win.
+
+    N=3, prior=0.25, pseudocount=2. User 0 has three resolved prior encounters
+    and one query at position 5; user 1's single encounter is the no-history case.
+    """
+
+    # user 0: A adopts (resolves at recur_pos 2), B does not (resolves at 1+3=4),
+    # D adopts only outside the horizon (resolves at 3+3=6). C at pos 5 is the
+    # query. user 1: E at pos 0 is a query with no priors.
+    user_code = np.array([0, 0, 0, 0, 1], dtype=np.int64)
+    encounter_pos = np.array([0, 1, 3, 5, 0], dtype=np.int64)
+    label = np.array([1, 0, 0, 0, 0], dtype=bool)
+    resolution_pos = np.array([2, 4, 6, 8, 3], dtype=np.int64)  # recur_pos if adopted else pos+3
+    pool_mask = np.ones(5, dtype=bool)
+
+    def _run(self, query_rows):
+        return baselines.incontext_user_rate(
+            self.user_code,
+            self.encounter_pos,
+            self.resolution_pos,
+            self.label,
+            self.pool_mask,
+            np.asarray(query_rows),
+            prior=0.25,
+            pseudocount=2.0,
+        )
+
+    def test_excludes_encounters_whose_horizon_has_not_closed(self):
+        # Query C (pos 5): A (res 2) and B (res 4) have resolved; D (res 6) has
+        # not, so it must be excluded. seen=2, positives=1 (A):
+        #   (1 + 2*0.25) / (2 + 2) = 1.5 / 4 = 0.375.
+        # Leaking the unresolved D would give (1 + 0.5) / (3 + 2) = 0.30 instead.
+        rate, seen = self._run([3])
+        assert seen[0] == 2.0
+        assert rate[0] == pytest.approx(0.375)
+
+    def test_zero_prior_query_falls_back_to_the_prior_exactly(self):
+        # User 1's only encounter has no resolved priors, so the rate is the
+        # shrinkage prior: (0 + 2*0.25) / (0 + 2) = 0.25.
+        rate, seen = self._run([4])
+        assert seen[0] == 0.0
+        assert rate[0] == pytest.approx(0.25)
+
+    def test_a_query_never_counts_itself(self):
+        # Scoring C at pos 5 must not include C's own (future) outcome; the pool
+        # for C is exactly {A, B}, so the answer is unchanged from the first test.
+        rate, _ = self._run([3, 4])
+        assert rate[0] == pytest.approx(0.375)
+        assert rate[1] == pytest.approx(0.25)
