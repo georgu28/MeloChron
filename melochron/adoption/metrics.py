@@ -142,6 +142,58 @@ def bootstrap_pr_auc(
     )
 
 
+def paired_delta_pr_auc(
+    labels: np.ndarray,
+    a: np.ndarray,
+    b: np.ndarray,
+    users: np.ndarray,
+    mask: np.ndarray | None = None,
+    rounds: int = 1000,
+    seed: int = 0,
+    alpha: float = 0.05,
+) -> tuple[float, float, float]:
+    """Percentile CI for PR-AUC(a) - PR-AUC(b), resampling whole users.
+
+    The paired difference is the honest test of "does column ``a`` beat column
+    ``b``": both are scored on the *same* resampled users each round, so the heavy
+    within-user correlation cancels instead of inflating the interval the way two
+    independent marginal CIs do. A 95% interval that excludes 0 is a real win at
+    this cohort's user count; one that straddles 0 is not.
+
+    Returns ``(mean_delta, lo, hi)``.
+    """
+    labels = np.asarray(labels).astype(bool)
+    a = np.asarray(a, dtype=np.float64)
+    b = np.asarray(b, dtype=np.float64)
+    users = np.asarray(users)
+    if mask is not None:
+        labels, a, b, users = labels[mask], a[mask], b[mask], users[mask]
+
+    order = np.argsort(users, kind="stable")
+    sorted_users = users[order]
+    boundaries = np.flatnonzero(
+        np.concatenate([[True], sorted_users[1:] != sorted_users[:-1], [True]])
+    )
+    groups = [order[boundaries[i] : boundaries[i + 1]] for i in range(len(boundaries) - 1)]
+    n_groups = len(groups)
+
+    rng = np.random.default_rng(seed)
+    deltas = []
+    for _ in range(rounds):
+        rows = np.concatenate([groups[i] for i in rng.integers(0, n_groups, size=n_groups)])
+        y = labels[rows]
+        if y.all() or not y.any():
+            continue
+        deltas.append(average_precision_score(y, a[rows]) - average_precision_score(y, b[rows]))
+    if not deltas:
+        return float("nan"), float("nan"), float("nan")
+    return (
+        float(np.mean(deltas)),
+        float(np.quantile(deltas, alpha / 2)),
+        float(np.quantile(deltas, 1 - alpha / 2)),
+    )
+
+
 def evaluate_slices(
     labels: np.ndarray,
     scores: np.ndarray,
