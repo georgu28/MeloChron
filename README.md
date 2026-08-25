@@ -83,10 +83,15 @@ Paired verdicts (all significant): `tf-musicnn − id-priors` +0.024 (all) / +0.
 (cold_user); `tf-genre − id-pure` +0.029; `tf-musicnn − tf-genre` +0.028;
 `incontext − user×item` +0.11. `tf-musicnn − incontext` is a statistical **tie**.
 
-**Open (terminal experiment, finalising):** given the in-context rate *as an input
-feature*, does the sequence add anything on top? — a residual head over the fixed
-rate, so it can only add. The result (a quantified positive or a clean negative)
-will replace this line; see `process.md`.
+**Terminal experiment — settled.** Given the in-context rate *as an input feature*,
+does the sequence add anything on top? Two arms on the fixed cohort, both handed the
+exact `incontext-user-rate` array: a **residual** head (base fixed at coefficient 1,
+can only add) scores paired Δ **−0.0213 [−0.0283, −0.0151]\*** vs incontext-alone (all);
+a **concat** head (free to weight it) **−0.0068 [−0.0114, −0.0022]\***. Both are
+significant losses overall and a **tie on cold_user** (residual −0.005 ns, concat
++0.007 ns) — no significant gain anywhere. **The ID sequence adds nothing over the
+training-free in-context rate.** (Still untested: the same rate on top of the best
+*content* model — see `process.md`.)
 
 ## Honest bottom line
 

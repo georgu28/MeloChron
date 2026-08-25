@@ -523,6 +523,40 @@ approach still does not beat the two-line, training-free in-context rate**, and 
 now know *why*: a train-fit model misweights that rate for the cold-start/drift
 regime a direct estimator handles cleanly. The thing to beat remains unbeaten.
 
+### Terminal experiment — does the sequence add OVER the in-context rate?  ⚑ clean negative
+
+The fair-last-shot fed incontext to the *priors* head and still lost. This closes the
+question directly: hand the encoder the exact `incontext-user-rate` array as an input and
+measure the sequence's contribution two ways, both on the fixed cohort
+(`scripts/train_seq_over_incontext.py`,
+`artifacts/adoption/phase4-seq-over-incontext-{residual,concat}.md`). Run one variant per
+process (a single 15k/len100 run fits this box; stacking two orphaned runs is what caused
+the earlier swap-thrash — [D10]).
+
+* **residual** — the head sees only `[h, c, h⊙c]` and predicts a *correction*; the output is
+  `correction + logit(incontext)` with the base coefficient **fixed at 1**, so it can only
+  add, never dilute the rate. The clean, architecturally-fair test.
+* **concat** — incontext (+ a `seen/(seen+pseudocount)` confidence feature) is concatenated
+  as an ordinary head input, so training is free to weight it, including down-weighting.
+
+| variant | all: incontext → seq+incontext | paired Δ (all) | paired Δ (cold_user) |
+|---|---|---|---|
+| residual | 0.4212 → 0.3995 | **−0.0213 [−0.0283, −0.0151]\*** | −0.0047 [−0.0194, +0.0119] ns |
+| concat | 0.4212 → 0.4141 | **−0.0068 [−0.0114, −0.0022]\*** | +0.0069 [−0.0033, +0.0165] ns |
+
+**Verdict — clean negative.** Both arms lose significantly overall and tie on cold_user;
+neither shows a significant gain anywhere. Even the **residual** head — which architecturally
+*can only add* to the rate — ends up below it, because the sequence's learned correction, fit
+on train under drift, is net harmful to *ranking* (it does **improve calibration**: ECE 0.031
+vs 0.049 on all). Concat lands closer to the bar only because it can lean almost entirely on
+the incontext feature and nearly ignore the sequence. **The ID sequence encoder adds nothing
+over the two-line, training-free in-context rate — the thing to beat remains unbeaten.**
+
+**Scope (still open).** This tested the **ID** encoder. The strongest *content* model
+(`text_frozen(musicnn)`, which *ties* incontext standalone) was **not** given the rate as an
+input — "best-content-model + incontext" remains the genuinely open version of this test, and
+a genre⊕musicnn content-fusion model (untried) may raise the content bar first.
+
 ---
 
 ## Audio features — is content weak *inherently*, or just coarse genre?  ⚑ correction
