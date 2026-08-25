@@ -78,6 +78,17 @@ def main(argv: list[str] | None = None) -> int:
         "--report", type=Path, default=Path("artifacts/adoption/phase4-seq-over-incontext.md")
     )
     ap.add_argument("--variant", choices=["concat", "residual", "both"], default="both")
+    ap.add_argument(
+        "--item-variant",
+        default="id",
+        help="encoder item representation (e.g. text_frozen for a content encoder)",
+    )
+    ap.add_argument(
+        "--text-matrix",
+        type=Path,
+        default=None,
+        help="content matrix [n_tracks, d] for non-id item variants (default: <features>/genres.npy)",
+    )
     ap.add_argument("--train-users", type=int, default=15_000)
     ap.add_argument("--max-len", type=int, default=100)
     ap.add_argument("--epochs", type=int, default=20)
@@ -178,11 +189,30 @@ def main(argv: list[str] | None = None) -> int:
     assert np.array_equal(columns["incontext-alone"], feats["residual"][1][:, 0])
 
     n_items = compact.n_tracks + 1
+    # For a content encoder, align the matrix to model ids: id 0 is the pad slot and
+    # ids 1..n_tracks are track_code+1, so prepend a zero row (mirrors train_adoption).
+    text_vectors = None
+    if args.item_variant != "id":
+        matrix_path = args.text_matrix or (args.features / "genres.npy")
+        content = np.load(matrix_path).astype(np.float32)
+        text_vectors = torch.from_numpy(
+            np.vstack([np.zeros((1, content.shape[1]), dtype=np.float32), content])
+        )
+        print(
+            f"item representation '{args.item_variant}' from {matrix_path.name}: "
+            f"text_vectors {tuple(text_vectors.shape)}",
+            flush=True,
+        )
     runs = {}
     for name in wanted:
         fit_p, cohort_p, kw = feats[name]
         model = AdoptionModel(
-            n_items=n_items, d_model=128, max_len=args.max_len, item_variant="id", **kw
+            n_items=n_items,
+            d_model=128,
+            max_len=args.max_len,
+            item_variant=args.item_variant,
+            text_vectors=text_vectors,
+            **kw,
         ).to(device)
         config = TrainConfig(
             max_len=args.max_len, batch_size=args.batch_size, epochs=args.epochs, seed=args.seed
