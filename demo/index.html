@@ -72,6 +72,7 @@ th:first-child,td:first-child{text-align:left}
 thead th{font-size:.8rem; font-weight:600; color:var(--faint); border-bottom:1px solid var(--line-strong)}
 tbody tr:last-child td{border-bottom:none}
 .win-cell{color:var(--accent); font-weight:700}
+.ret-yes{color:var(--pos); font-weight:700}
 
 figure{margin:1.4rem 0}
 figure svg{width:100%; height:auto; display:block}
@@ -115,6 +116,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
       <li><a href="#baselines">Baselines</a></li>
       <li><a href="#iteration">Iteration</a></li>
       <li><a href="#results">Results</a></li>
+      <li><a href="#demo">Demo</a></li>
       <li><a href="#wrong">Roadblocks</a></li>
       <li><a href="#why">Discussion</a></li>
       <li><a href="#limits">Limitations</a></li>
@@ -296,6 +298,76 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     <p>It wins in every group by about the same margin, and all four gaps pass a paired user-bootstrap test, with the 95% interval clear of zero.</p>
   </section>
 
+  <section id="demo">
+    <h2 class="section-title">Demo</h2>
+    <p>Numbers are one thing. Here is what the model does for three real listeners from the test years: the tracks they met for the first time, the chance it gave them of coming back, and whether they came back.</p>
+    <p>Each prediction rests on two things. Most of it is how open a listener is, which the model reads from their past plays. The rest is a nudge up or down for the particular track, by how it sounds. The first part carries most of the weight.</p>
+
+    <div class="figs">
+      <div class="fig"><div class="n num">0.69</div><div class="k">how the model's average call tracks each listener's real return rate</div></div>
+      <div class="fig"><div class="n num">+6 pts</div><div class="k">extra returns for the half of a listener's tracks the model ranks highest</div></div>
+    </div>
+
+    <h3>Reading the listener</h3>
+    <p>The model never sees anyone's return rate. It reads a history and scores one track at a time. Averaged over a listener, though, its call lands near how often they really come back. It climbs from the picky regular to the open enthusiast, and across every listener with a few encounters the average call and the real rate move together, a correlation of 0.69. Most of what the model does is read how open a person is.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>listener</th><th>new tracks met</th><th>came back to</th><th>model's average call</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>a steady regular</td><td class="num">3,450</td><td class="num">26%</td><td class="num">28%</td></tr>
+          <tr><td>a newcomer, no history</td><td class="num">1,427</td><td class="num">39%</td><td class="num">36%</td></tr>
+          <tr><td>an open enthusiast</td><td class="num">1,474</td><td class="num">76%</td><td class="num">57%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Sorting a listener's tracks</h3>
+    <p>Within a single listener the model also ranks, putting the tracks they will return to a little higher. The signal is softer here. The steady regular came back to 26% of what they met, and the model kept most of its calls low, spending its confidence on the one track it was sure of.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>the steady regular</th><th>track</th><th>chance of return</th><th>came back?</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Beck</td><td>Loser</td><td class="num">86%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>Orgy</td><td>Opticon</td><td class="num">34%</td><td>no</td></tr>
+          <tr><td>Dance Gavin Dance</td><td>Philosopher King</td><td class="num">28%</td><td>no</td></tr>
+          <tr><td>Yeah Yeah Yeahs</td><td>Sacrilege</td><td class="num">24%</td><td>no</td></tr>
+          <tr><td>Jack White</td><td>Over and Over and Over</td><td class="num">20%</td><td>no</td></tr>
+          <tr><td>Life of Agony</td><td>Weeds</td><td class="num">9%</td><td>no</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>The open enthusiast came back to 76%. The model rated most of their tracks high, and the one it doubted was the one they skipped.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>the open enthusiast</th><th>track</th><th>chance of return</th><th>came back?</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Imagine Dragons</td><td>Real Life</td><td class="num">82%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>Story of the Year</td><td>Until the Day I Die</td><td class="num">68%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>Papa Roach</td><td>Feel Like Home</td><td class="num">62%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>Saint Asonia</td><td>Dying Slowly</td><td class="num">54%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>The Vines</td><td>Homesick</td><td class="num">47%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>Winger</td><td>Hungry</td><td class="num">25%</td><td>no</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>The newcomer had no history at all, nothing to fit a rate to, and the model still ranked their tracks from sound alone. Of the ones it placed in their top half, 43% came back, against 34% in the bottom half. That is content reaching a listener the model never got to learn.</p>
+
+    <div class="note">
+      Across everyone the sorting is modest. Tracks the model ranks in a listener's top half come back 40% of the time, against 34% for the bottom half. A real edge, and a gentle one. Knowing the person matters more than knowing the track they just met, the same lesson this project keeps landing on.
+    </div>
+  </section>
+
   <section id="wrong">
     <h2 class="section-title">Roadblocks</h2>
     <p>The two results I withdrew, on cold users and on content, came from the same habit: when a number looks good, build the test that could break it. The cold-user win fell to the running rate I built to check it, and my early call that content was weak fell once I measured it properly. The running rate itself started as one of those tests, and it turned out to be the hardest thing in the project to beat.</p>
@@ -328,7 +400,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     <p>The hardest baseline to beat was a two-line running count of how often each listener comes back. The winning model feeds that count into a sequence model that describes tracks by their sound, lifting the score from 0.4212 to 0.4520. The margin is real but modest.</p>
     <p>Why is that running count so strong? I think adoption depends mostly on the listener. Some people are picky and come back to almost nothing; others are open and come back to a lot. The running rate reads that openness straight from a person's own history, no model required. Taste and the sound of a track add to it, and they matter: audio content on its own scored 0.414, a statistical tie with the rate's 0.421. Even so, most of the signal looks like how open a listener is, and content is what adds to it.</p>
     <div class="note">
-      Still to come: a demo of real listeners, their predicted chance of returning against what actually happened.
+      The demo earlier on this page walks three real listeners through the model's predictions against what they actually did. A live version, scoring a listener's history as it comes in, would be the next step.
     </div>
   </section>
 
