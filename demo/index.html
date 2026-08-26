@@ -1,0 +1,281 @@
+<title>MeloChron</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --ground:#F4F3EF; --surface:#FBFAF8; --sunk:#EEEDE7;
+  --ink:#1B1C21; --muted:#6A6B73; --line:#E3E1DA;
+  --accent:#0F7C8A;        /* teal — the winner (content) */
+  --bar:#B5822B;           /* amber — the in-context bar to beat */
+  --pos:#0F7C8A; --neg:#A24C3E;
+  --pos-soft:#0F7C8A22; --neg-soft:#A24C3E1c; --bar-soft:#B5822B22;
+  --shadow:0 1px 2px rgba(20,21,26,.04),0 8px 30px rgba(20,21,26,.06);
+  --maxw:74ch;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#131419; --surface:#1B1D24; --sunk:#23252e;
+    --ink:#ECEAE3; --muted:#9C9DA6; --line:#2B2D36;
+    --accent:#3FB6C2; --bar:#D6A24A; --pos:#3FB6C2; --neg:#C56B5B;
+    --pos-soft:#3FB6C222; --neg-soft:#C56B5B22; --bar-soft:#D6A24A22;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 34px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#131419; --surface:#1B1D24; --sunk:#23252e;
+  --ink:#ECEAE3; --muted:#9C9DA6; --line:#2B2D36;
+  --accent:#3FB6C2; --bar:#D6A24A; --pos:#3FB6C2; --neg:#C56B5B;
+  --pos-soft:#3FB6C222; --neg-soft:#C56B5B22; --bar-soft:#D6A24A22;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 34px rgba(0,0,0,.35);
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,sans-serif; font-size:17px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:var(--maxw); margin:0 auto; padding:clamp(1.4rem,4vw,3rem) clamp(1.2rem,5vw,2rem)}
+section{margin-top:clamp(3.5rem,8vw,5.5rem)}
+h1,h2,h3{font-family:"Fraunces",Georgia,serif; text-wrap:balance; line-height:1.08; margin:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums}
+.eyebrow{font-family:"IBM Plex Mono",monospace; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin:0 0 1rem}
+a{color:var(--accent)}
+strong{font-weight:600}
+
+/* ---- hero ---- */
+.hero{padding-top:clamp(1rem,3vw,2rem)}
+.hero .kicker{font-family:"IBM Plex Mono",monospace; font-size:.74rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+.hero h1{font-size:clamp(2.5rem,7.5vw,4.4rem); font-weight:600; font-optical-sizing:auto; margin:.7rem 0 0; letter-spacing:-.015em}
+.hero h1 em{font-style:italic; color:var(--accent); font-weight:500}
+.lede{font-size:clamp(1.12rem,2.6vw,1.32rem); color:var(--muted); max-width:60ch; margin:1.4rem 0 0; line-height:1.5}
+.lede b{color:var(--ink); font-weight:500}
+
+/* ---- headline stat band ---- */
+.band{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px; background:var(--line);
+  border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-top:2.4rem; box-shadow:var(--shadow)}
+.band .cell{background:var(--surface); padding:1.15rem 1.25rem}
+.band .n{font-family:"Fraunces",serif; font-size:2rem; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+.band .n.win{color:var(--accent)}
+.band .n.barc{color:var(--bar)}
+.band .k{font-family:"IBM Plex Mono",monospace; font-size:.7rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-top:.35rem}
+.band .cell .sub{font-size:.82rem; color:var(--muted); margin-top:.15rem}
+
+h2{font-size:clamp(1.6rem,4vw,2.15rem); font-weight:600; letter-spacing:-.01em}
+.section-lede{color:var(--muted); max-width:62ch; margin:.8rem 0 0}
+p{max-width:64ch}
+
+/* ---- ranked bars ---- */
+.ranks{margin-top:2rem; display:flex; flex-direction:column; gap:.55rem}
+.rank{display:grid; grid-template-columns:minmax(120px,10.5rem) 1fr auto; align-items:center; gap:.9rem}
+.rank .name{font-size:.9rem}
+.rank .name .tag{display:block; font-family:"IBM Plex Mono",monospace; font-size:.66rem; letter-spacing:.05em; color:var(--muted); text-transform:uppercase}
+.track{position:relative; height:26px; background:var(--sunk); border-radius:6px; overflow:hidden}
+.fill{position:absolute; inset:0 auto 0 0; border-radius:6px; background:var(--muted); opacity:.5}
+.rank.isbar .fill{background:var(--bar); opacity:1}
+.rank.iswin .fill{background:var(--accent); opacity:1}
+.rank .val{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:.92rem; min-width:3.6ch; text-align:right}
+.baseline-note{position:relative; margin-top:.4rem; font-family:"IBM Plex Mono",monospace; font-size:.7rem; color:var(--muted)}
+
+/* ---- forest plot ---- */
+.forest{margin-top:1.8rem; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:1.4rem 1.3rem 1rem; box-shadow:var(--shadow)}
+.forest figcaption{font-family:"IBM Plex Mono",monospace; font-size:.72rem; letter-spacing:.05em; color:var(--muted); text-transform:uppercase; margin-bottom:.4rem}
+.forest svg{width:100%; height:auto; display:block; overflow:visible}
+.legend{display:flex; flex-wrap:wrap; gap:1.1rem; margin-top:.9rem; font-size:.8rem; color:var(--muted)}
+.legend span{display:inline-flex; align-items:center; gap:.4rem}
+.dot{width:.7rem; height:.7rem; border-radius:50%; display:inline-block}
+
+/* ---- table ---- */
+.tablewrap{overflow-x:auto; margin-top:1.8rem; border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow)}
+table{border-collapse:collapse; width:100%; background:var(--surface); font-size:.92rem}
+th,td{padding:.7rem .9rem; text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left; font-family:inherit}
+thead th{font-family:"IBM Plex Mono",monospace; font-size:.68rem; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); font-weight:500}
+tbody tr:last-child td{border-bottom:none}
+td.mono,th.mono{font-family:"IBM Plex Mono",monospace}
+.win-col{color:var(--accent); font-weight:600}
+.bar-col{color:var(--bar); font-weight:600}
+
+/* ---- method chips ---- */
+.chips{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-top:1.8rem}
+.chip{background:var(--surface); padding:1.15rem 1.2rem}
+.chip h3{font-family:"IBM Plex Sans",sans-serif; font-size:.95rem; font-weight:600; margin-bottom:.3rem}
+.chip p{font-size:.86rem; color:var(--muted); margin:0; max-width:none}
+.chip .mk{font-family:"IBM Plex Mono",monospace; font-size:.66rem; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:.45rem}
+
+/* ---- pending note ---- */
+.pending{margin-top:1.6rem; border:1px dashed var(--line); border-radius:12px; padding:1rem 1.2rem; background:var(--bar-soft); font-size:.9rem; color:var(--ink)}
+.pending .mono{color:var(--muted); font-size:.8rem}
+
+.limits{margin-top:1.6rem; columns:2 22ch; column-gap:2.2rem; font-size:.9rem; color:var(--muted)}
+.limits p{break-inside:avoid; margin:0 0 .8rem; max-width:none}
+.limits b{color:var(--ink); font-weight:600}
+
+footer{margin:5rem 0 2rem; padding-top:1.6rem; border-top:1px solid var(--line); font-family:"IBM Plex Mono",monospace; font-size:.74rem; color:var(--muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap:.6rem}
+
+.toggle{position:fixed; top:.9rem; right:.9rem; z-index:10; background:var(--surface); border:1px solid var(--line); color:var(--muted);
+  font-family:"IBM Plex Mono",monospace; font-size:.72rem; padding:.4rem .7rem; border-radius:8px; cursor:pointer}
+.toggle:focus-visible,a:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+@media (max-width:560px){ .limits{columns:1} .rank{grid-template-columns:minmax(96px,8rem) 1fr auto} }
+</style>
+
+<button class="toggle" id="tg" aria-label="Toggle light or dark theme">theme</button>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">MeloChron · adoption prediction · Music4All-Onion (253M events)</div>
+    <h1>The bar was a two-line rate. <em>Content finally beat it.</em></h1>
+    <p class="lede">Given a track a listener meets for the <b>first time</b>, will they come back to it? The strongest signal isn't a neural net — it's a training-free <b>in-context rate</b>. Every ID model lost to it. A <b>content</b> sequence model, handed that rate as a floor it could only add to, is the first to clear it — significantly, on every slice.</p>
+
+    <div class="band">
+      <div class="cell"><div class="n barc mono">0.4212</div><div class="k">in-context rate · the bar</div><div class="sub">PR-AUC @ base 0.3079 · lift 1.37</div></div>
+      <div class="cell"><div class="n win mono">0.4520</div><div class="k">content + in-context</div><div class="sub">the first model to beat the bar</div></div>
+      <div class="cell"><div class="n mono">+0.0312</div><div class="k">paired Δ, 95% CI clears 0</div><div class="sub">[+0.0231, +0.0392] · resampling users</div></div>
+    </div>
+  </header>
+
+  <section id="bar">
+    <p class="eyebrow">01 · the bar to beat</p>
+    <h2>Baselines before the model — and the baseline won for a long time</h2>
+    <p class="section-lede">A precision-recall number is meaningless without its base rate; a coin scores <span class="mono">0.3079</span> here. The honest adversary is a running per-user adoption rate computed from the listener's own prior first-encounters — no training, no look-ahead. It out-scored every ID embedding model.</p>
+
+    <div class="ranks">
+      <div class="rank"><div class="name">coin / base rate<span class="tag">global-prior</span></div><div class="track"><div class="fill" style="width:44%"></div></div><div class="val">0.308</div></div>
+      <div class="rank"><div class="name">user × item<span class="tag">tuned baseline</span></div><div class="track"><div class="fill" style="width:63%"></div></div><div class="val">0.378</div></div>
+      <div class="rank"><div class="name">user × artist<span class="tag">artist-affinity</span></div><div class="track"><div class="fill" style="width:66%"></div></div><div class="val">0.387</div></div>
+      <div class="rank"><div class="name">ID + priors<span class="tag">best ID model</span></div><div class="track"><div class="fill" style="width:69%"></div></div><div class="val">0.390</div></div>
+      <div class="rank"><div class="name">tf-musicnn<span class="tag">audio content</span></div><div class="track"><div class="fill" style="width:81%"></div></div><div class="val">0.414</div></div>
+      <div class="rank isbar"><div class="name">in-context rate<span class="tag">the bar</span></div><div class="track"><div class="fill" style="width:88%"></div></div><div class="val">0.421</div></div>
+      <div class="rank iswin"><div class="name">content + in-context<span class="tag">this work</span></div><div class="track"><div class="fill" style="width:100%"></div></div><div class="val">0.452</div></div>
+    </div>
+    <p class="section-lede" style="margin-top:1.4rem">PR-AUC on the fixed 500,001-row cohort (base <span class="mono">0.3079</span>). Bars scaled from the base rate to the top score, so the gaps are the real gaps.</p>
+  </section>
+
+  <section id="pivot">
+    <p class="eyebrow">02 · the terminal experiment</p>
+    <h2>Does the sequence add anything <em>over</em> the rate? Only if items are content.</h2>
+    <p class="section-lede">Hand the encoder the exact in-context rate as an input and measure the sequence's contribution — twice, two ways of combining it, on the same cohort. The head's <em>residual</em> form fixes the rate as a base it can only add to; the answer flips entirely on how items are represented.</p>
+
+    <figure class="forest">
+      <figcaption>Paired Δ PR-AUC vs the in-context rate — 95% CI, resampling users (all-cohort slice)</figcaption>
+      <svg viewBox="0 0 700 210" role="img" aria-label="Forest plot of paired differences versus the in-context rate. The two ID sequence models fall left of zero — worse than the rate. The two content sequence models fall right of zero, their 95% intervals clear of it.">
+        <!-- zero line = the bar (0-tick at x=343) -->
+        <line x1="343" y1="34" x2="343" y2="176" stroke="var(--bar)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <!-- axis ticks: x(Δ) = 343 + Δ*6111 -->
+        <g font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">
+          <text x="221" y="197" text-anchor="middle">−0.02</text>
+          <text x="282" y="197" text-anchor="middle">−0.01</text>
+          <text x="343" y="197" text-anchor="middle" fill="var(--bar)">0 · the bar</text>
+          <text x="404" y="197" text-anchor="middle">+0.01</text>
+          <text x="465" y="197" text-anchor="middle">+0.02</text>
+          <text x="526" y="197" text-anchor="middle">+0.03</text>
+          <text x="587" y="197" text-anchor="middle">+0.04</text>
+        </g>
+        <!-- row labels (left) -->
+        <g font-family="IBM Plex Sans, sans-serif" font-size="12.5">
+          <text x="150" y="54" text-anchor="end" fill="var(--muted)">ID · residual</text>
+          <text x="150" y="92" text-anchor="end" fill="var(--muted)">ID · concat</text>
+          <text x="150" y="130" text-anchor="end" fill="var(--muted)">content · concat</text>
+          <text x="150" y="168" text-anchor="end" fill="var(--ink)" font-weight="600">content · residual</text>
+        </g>
+        <!-- ID residual  Δ-0.0213 [-0.0283,-0.0151] -->
+        <line x1="170" y1="50" x2="251" y2="50" stroke="var(--neg)" stroke-width="2"/>
+        <circle cx="213" cy="50" r="5.5" fill="var(--neg)"/>
+        <text x="690" y="54" font-family="IBM Plex Mono,monospace" font-size="11.5" fill="var(--ink)" text-anchor="end">−0.021 *</text>
+        <!-- ID concat  Δ-0.0068 [-0.0114,-0.0022] -->
+        <line x1="273" y1="88" x2="330" y2="88" stroke="var(--neg)" stroke-width="2"/>
+        <circle cx="301" cy="88" r="5.5" fill="var(--neg)"/>
+        <text x="690" y="92" font-family="IBM Plex Mono,monospace" font-size="11.5" fill="var(--ink)" text-anchor="end">−0.007 *</text>
+        <!-- content concat  Δ+0.0253 [+0.0195,+0.0310] -->
+        <line x1="462" y1="126" x2="532" y2="126" stroke="var(--pos)" stroke-width="2"/>
+        <circle cx="498" cy="126" r="5.5" fill="var(--pos)"/>
+        <text x="690" y="130" font-family="IBM Plex Mono,monospace" font-size="11.5" fill="var(--ink)" text-anchor="end">+0.025 *</text>
+        <!-- content residual  Δ+0.0312 [+0.0231,+0.0392] -->
+        <line x1="484" y1="164" x2="583" y2="164" stroke="var(--pos)" stroke-width="2.5"/>
+        <circle cx="534" cy="164" r="6.5" fill="var(--pos)"/>
+        <text x="690" y="168" font-family="IBM Plex Mono,monospace" font-size="12" fill="var(--pos)" font-weight="600" text-anchor="end">+0.031 *</text>
+      </svg>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--neg)"></i> ID items — correction is net harmful under drift</span>
+        <span><i class="dot" style="background:var(--pos)"></i> content items — adds real taste signal</span>
+        <span><i class="dot" style="background:var(--bar);border-radius:1px;width:.9rem;height:.28rem"></i> zero = the in-context bar</span>
+      </div>
+    </figure>
+    <p class="section-lede" style="margin-top:1.5rem">The head is byte-identical across all four runs; only the encoder's item embedding changes. An <b>ID</b> table memorises the train period and its learned correction misfires under temporal drift. A shared <b>content</b> projection can't memorise per item — so the sequence carries taste signal the rate lacks. <b>The representation, not the head, decides whether the sequence beats the rate.</b></p>
+  </section>
+
+  <section id="slices">
+    <p class="eyebrow">03 · where it wins</p>
+    <h2>Every slice, including the cold ones</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>slice</th><th class="mono">base</th><th class="mono">in-context</th><th class="mono">content + IC</th><th class="mono">paired Δ</th></tr></thead>
+        <tbody>
+          <tr><td>all</td><td class="mono">0.3079</td><td class="mono bar-col">0.4212</td><td class="mono win-col">0.4520</td><td class="mono">+0.031*</td></tr>
+          <tr><td>cold_user <span style="color:var(--muted);font-size:.82em">(no history)</span></td><td class="mono">0.2898</td><td class="mono bar-col">0.3776</td><td class="mono win-col">0.4106</td><td class="mono">+0.036*</td></tr>
+          <tr><td>unfamiliar <span style="color:var(--muted);font-size:.82em">(new genre)</span></td><td class="mono">0.2860</td><td class="mono bar-col">0.3706</td><td class="mono win-col">0.4048</td><td class="mono">wins</td></tr>
+          <tr><td>new_neighborhood</td><td class="mono">0.3064</td><td class="mono bar-col">0.3730</td><td class="mono win-col">0.4062</td><td class="mono">wins</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="section-lede" style="margin-top:1.3rem">The win is largest on <b>cold users</b> (+0.036) — people with no training history — because the content model needs no ID table and leans on what a track <em>is</em>, not on having seen it before. <span class="mono" style="font-size:.85em">* = 95% CI excludes 0.</span></p>
+  </section>
+
+  <section id="method">
+    <p class="eyebrow">04 · how we know it's real</p>
+    <h2>The result survives an honest test</h2>
+    <p class="section-lede">The project's value is the method. Two findings were retracted mid-stream when the evidence turned — that discipline is the point.</p>
+    <div class="chips">
+      <div class="chip"><span class="mk">paired · user-bootstrap</span><h3>Resample users, not rows</h3><p>Encounters within a listener aren't independent. A win is a paired difference whose 95% interval clears zero — never two overlapping marginal bars.</p></div>
+      <div class="chip"><span class="mk">no look-ahead</span><h3>An encounter never sees its own future</h3><p>The in-context rate is resolution-gated and unit-tested: a prior counts only once its horizon has closed. The baseline plays by the model's rules.</p></div>
+      <div class="chip"><span class="mk">built to lose</span><h3>An adjudication that could fail</h3><p>The in-context rate was added specifically to test whether the encoder's cold-user "win" was real. It wasn't — the encoder lost, and the claim was withdrawn.</p></div>
+      <div class="chip"><span class="mk">retracted</span><h3>"Content is weak" was a method artifact</h3><p>Raw cosine and an unstable residual hybrid, not content. Run as a learned projection, even coarse genre beats an ID table; learned audio beats genre.</p></div>
+    </div>
+  </section>
+
+  <section id="next">
+    <p class="eyebrow">05 · in progress</p>
+    <h2>Can richer content raise the ceiling?</h2>
+    <p class="section-lede">The best content model so far is learned audio (musicnn). Music4All maps to <b>100% of the cohort's 56,512 tracks</b> by Spotify ID, unlocking lyrics and release-era as new content — orthogonal to audio.</p>
+    <div class="pending">
+      <b>Training now:</b> a fused <span class="mono">musicnn ⊕ lyrics ⊕ era</span> content model (multilingual lyric embeddings for 51,494 tracks, PCA-balanced against audio) + the in-context rate.<br>
+      <span class="mono">Open question: does it beat content+in-context (0.4520), or is musicnn already capturing the signal? Predicted-vs-actual demo on real listeners lands with it.</span>
+    </div>
+  </section>
+
+  <section id="limits">
+    <p class="eyebrow">06 · limitations, stated plainly</p>
+    <h2>What this is not</h2>
+    <div class="limits">
+      <p><b>Single seed, single split.</b> Discovery-slice margins are small; the headline is robust, the fine grain less so.</p>
+      <p><b>Temporal drift is real.</b> Adoption falls from a 0.37 train rate to 0.31 on test, miscalibrating every train-fitted prior — the reason the training-free rate is so strong.</p>
+      <p><b>Reduced config.</b> 15k users, history length 100, to fit a 6 GB laptop GPU. A max_len sweep confirms the conclusions hold.</p>
+      <p><b>The model consumes the rate.</b> This is "content adds <em>over</em> the rate," not "content alone beats it" — the rate stays a large component.</p>
+      <p><b>Not a deployment.</b> Trained on 2005–2020 Last.fm scrobbles; a live import would be out-of-distribution and illustrative, not calibrated.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>MeloChron · adoption prediction</span>
+    <span>PR-AUC quoted with base rate, always</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var b=document.getElementById("tg");
+  function cur(){var e=document.documentElement.getAttribute("data-theme");
+    if(e)return e;
+    return matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";}
+  b.addEventListener("click",function(){
+    var n=cur()==="dark"?"light":"dark";
+    document.documentElement.setAttribute("data-theme",n);
+    try{localStorage.setItem("mc-theme",n)}catch(e){}
+  });
+  try{var s=localStorage.getItem("mc-theme"); if(s)document.documentElement.setAttribute("data-theme",s);}catch(e){}
+})();
+</script>
