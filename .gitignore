@@ -45,6 +45,7 @@ node_modules/
 # preserved in the commit messages.
 COORDINATION.md
 REVIEW-*.md
+CLAUDE.md
 
 # OS
 Thumbs.db
