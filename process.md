@@ -582,8 +582,15 @@ everywhere *gain* (+0.031\*). So the sequence *does* carry adoption signal beyon
 in-context rate — but only when items are represented by **content**, not a memorised ID
 table that overfits the train period under drift. Because the base is fixed at
 coefficient 1, the +0.031 is genuinely additive: **content sequence plus the training-free
-rate is the strongest adoption model in the project.** The `concat` arm (head free to
-weight the rate) is training as a corroborating control.
+rate is the strongest adoption model in the project.**
+
+**Corroborated by concat** (head free to weight the rate): also a significant win —
+**+0.0253 [+0.0195, +0.0310]\*** (all), **+0.0349\*** (cold_user), 0.4463 (all) — a hair
+below residual (0.4520) because residual keeps the full rate as base while concat can
+slightly misweight it. Both combination methods flip sign with the item representation:
+ID (residual −0.021\*, concat −0.007\* — both losses) → content (residual +0.031\*,
+concat +0.025\* — both wins). **The item representation, not the head design, decides
+whether the sequence beats the rate.**
 
 **Caveats.** Single seed; the model *consumes* the in-context rate, so this is "content
 adds *over* the rate," not "content alone beats it" — the rate stays a large component.

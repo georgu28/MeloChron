@@ -98,7 +98,11 @@ what the encoder embeds items with:
   beat the in-context rate.** Because the base is fixed, that gain is genuinely what
   the content sequence adds *on top of* the rate — taste signal the ID table lacks.
 
-(The `concat` arm for the content encoder is training; residual is the decisive test.)
+**Corroborated by concat.** The free-to-weight head also beats the rate — **+0.0253
+[+0.0195, +0.0310]\*** (all), **+0.0349\*** (cold_user), 0.4463 (all) — a hair below
+residual (0.4520), since residual is forced to keep the full rate as base. Both
+combination methods flip from *loss* (ID) to *significant win* (content): the effect is
+the **item representation**, not the head.
 
 ## Honest bottom line
 
