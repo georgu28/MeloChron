@@ -83,23 +83,35 @@ Paired verdicts (all significant): `tf-musicnn − id-priors` +0.024 (all) / +0.
 (cold_user); `tf-genre − id-pure` +0.029; `tf-musicnn − tf-genre` +0.028;
 `incontext − user×item` +0.11. `tf-musicnn − incontext` is a statistical **tie**.
 
-**Terminal experiment — settled.** Given the in-context rate *as an input feature*,
-does the sequence add anything on top? Two arms on the fixed cohort, both handed the
-exact `incontext-user-rate` array: a **residual** head (base fixed at coefficient 1,
-can only add) scores paired Δ **−0.0213 [−0.0283, −0.0151]\*** vs incontext-alone (all);
-a **concat** head (free to weight it) **−0.0068 [−0.0114, −0.0022]\***. Both are
-significant losses overall and a **tie on cold_user** (residual −0.005 ns, concat
-+0.007 ns) — no significant gain anywhere. **The ID sequence adds nothing over the
-training-free in-context rate.** (Still untested: the same rate on top of the best
-*content* model — see `process.md`.)
+**Terminal experiment — the item representation decides it.** Given the in-context
+rate *as an input feature* (a **residual** head over a fixed `logit(incontext)` base,
+so the sequence can only *add*), does the sequence beat the rate? The answer flips on
+what the encoder embeds items with:
+
+- **ID sequence — no.** Residual **−0.0213 [−0.0283, −0.0151]\*** (all), tie on
+  cold_user; the concat variant (free to weight the rate) **−0.0068 [−0.0114,
+  −0.0022]\***. The ID sequence's learned correction is net harmful under drift.
+- **Content (musicnn) sequence — yes, decisively.** The same residual head over the
+  best content encoder scores **0.4520 (all)** — paired Δ **+0.0312 [+0.0231,
+  +0.0392]\*** over incontext-alone — and wins **every slice**: cold_user **+0.0364\***
+  (0.3776 → 0.4106), unfamiliar (0.3706 → 0.4048). **The first model to significantly
+  beat the in-context rate.** Because the base is fixed, that gain is genuinely what
+  the content sequence adds *on top of* the rate — taste signal the ID table lacks.
+
+(The `concat` arm for the content encoder is training; residual is the decisive test.)
 
 ## Honest bottom line
 
-A training-free in-context rate is the strongest single adoption signal, and the
-best neural model — content-based, not ID — *matches* but does not decisively
-*beat* it. The durable, defensible results are the **analysis**: the in-context
-rate is the bar; "content is weak" was a method artifact; learned audio > genre;
-time-delta matters; the cold-item catastrophe doesn't transfer.
+A training-free in-context rate is the strongest *single* adoption signal — no ID
+model beats it. But it is **not** the ceiling: the best **content** encoder (learned
+audio), handed that rate as a fixed base it can only add to, **significantly beats it**
+(+0.031\* overall, +0.036\* cold_user) — the first model to do so, and it needs no ID
+table, so it also covers cold users and items. The story is the **item
+representation**: an *ID* sequence adds nothing over the rate (its learned correction
+overfits under drift); a *content* sequence adds real taste signal on top. The durable
+results are the analysis — the in-context rate is the bar, "content is weak" was a
+method artifact, learned audio > genre, time-delta matters, the cold-item catastrophe
+doesn't transfer — capped by the headline: **content + the rate beats the rate.**
 
 ## Limitations
 

@@ -552,10 +552,43 @@ vs 0.049 on all). Concat lands closer to the bar only because it can lean almost
 the incontext feature and nearly ignore the sequence. **The ID sequence encoder adds nothing
 over the two-line, training-free in-context rate — the thing to beat remains unbeaten.**
 
-**Scope (still open).** This tested the **ID** encoder. The strongest *content* model
-(`text_frozen(musicnn)`, which *ties* incontext standalone) was **not** given the rate as an
-input — "best-content-model + incontext" remains the genuinely open version of this test, and
-a genre⊕musicnn content-fusion model (untried) may raise the content bar first.
+**Scope — resolved below.** This first pass tested the **ID** encoder. The follow-up
+(next subsection) runs the identical residual head over the best *content* encoder, and
+flips the result.
+
+### Content encoder + in-context rate — the rate is beaten  ✅ headline
+
+Re-ran the **residual** arm with the encoder's item representation swapped from `id` to
+`text_frozen(musicnn)` — the best content model — via new `--item-variant`/`--text-matrix`
+support in `scripts/train_seq_over_incontext.py`. Everything else identical: same cohort,
+the same fixed `logit(incontext)` base the head can only add to, len 100, 15k users
+(`artifacts/adoption/phase5-content-incontext-residual.md`).
+
+| slice | base | incontext-alone | content+incontext (residual) | paired Δ (`*` = 95% CI clears 0) |
+|---|---|---|---|---|
+| all | 0.3079 | 0.4212 | **0.4520** | **+0.0312 [+0.0231, +0.0392]\*** |
+| cold_user | 0.2898 | 0.3776 | **0.4106** | **+0.0364 [+0.0245, +0.0499]\*** |
+| unfamiliar | 0.2860 | 0.3706 | **0.4048** | wins |
+| new_neighborhood | 0.3064 | 0.3730 | **0.4062** | wins |
+
+Wins on **every** slice, significant overall and on cold_user. Unlike the ID models
+(epoch-0 overfit), it trained 20 epochs (best val 0.4957).
+
+**Meaning — the first model to beat the in-context rate, and the mechanism is the item
+representation.** The residual head is byte-identical across the two runs; only the
+encoder's item embedding changed (ID → learned audio). The **ID** sequence's correction
+was net harmful (−0.021\*); the **content** sequence's correction is a significant,
+everywhere *gain* (+0.031\*). So the sequence *does* carry adoption signal beyond the
+in-context rate — but only when items are represented by **content**, not a memorised ID
+table that overfits the train period under drift. Because the base is fixed at
+coefficient 1, the +0.031 is genuinely additive: **content sequence plus the training-free
+rate is the strongest adoption model in the project.** The `concat` arm (head free to
+weight the rate) is training as a corroborating control.
+
+**Caveats.** Single seed; the model *consumes* the in-context rate, so this is "content
+adds *over* the rate," not "content alone beats it" — the rate stays a large component.
+Artist/lyrics content (now available via Music4All — every one of the cohort's 56,512
+tracks resolves, see Phase 5) is untested and may raise the content contribution further.
 
 ---
 
