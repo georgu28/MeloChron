@@ -239,11 +239,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  {name}: best val PR-AUC {result['best_val_pr_auc']:.4f}", flush=True)
 
     # Context columns from the existing dump (same cohort order), if available.
-    dump = np.load(args.scores, allow_pickle=True)
-    if np.array_equal(dump["labels"].astype(bool), cohort_labels.astype(bool)):
-        for src, dst in (("model (pure)", "id-pure"), ("model (priors)", "id-priors")):
-            if f"col::{src}" in dump.files:
-                columns[dst] = dump[f"col::{src}"]
+    # Optional: absent on a fresh machine (the dump is gitignored). The headline
+    # columns (incontext-alone, seq+incontext) are computed above and do not need it.
+    if args.scores.exists():
+        dump = np.load(args.scores, allow_pickle=True)
+        if np.array_equal(dump["labels"].astype(bool), cohort_labels.astype(bool)):
+            for src, dst in (("model (pure)", "id-pure"), ("model (priors)", "id-priors")):
+                if f"col::{src}" in dump.files:
+                    columns[dst] = dump[f"col::{src}"]
 
     similarity = report.genre_similarity(
         compact,
