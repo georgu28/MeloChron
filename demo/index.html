@@ -73,6 +73,7 @@ thead th{font-size:.8rem; font-weight:600; color:var(--faint); border-bottom:1px
 tbody tr:last-child td{border-bottom:none}
 .win-cell{color:var(--accent); font-weight:700}
 .ret-yes{color:var(--pos); font-weight:700}
+caption{caption-side:top; text-align:left; font-size:.9rem; font-weight:650; color:var(--text); padding:0 .7rem .5rem}
 
 figure{margin:1.4rem 0}
 figure svg{width:100%; height:auto; display:block}
@@ -303,10 +304,6 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     <p>Numbers are one thing. Here is what the model does for three real listeners from the test years: the tracks they met for the first time, the chance it gave them of coming back to those tracks, and whether they actually came back.</p>
     <p>Each prediction rests on two things. Most of it is how open a listener is, which the model reads from their past plays. The rest is a nudge up or down for the track itself, by how it sounds. Openness carries most of the weight. When the model has never seen a listener before, the sound is what lets it generalize.</p>
 
-    <div class="figs">
-      <div class="fig"><div class="n num">0.69</div><div class="k">how the model's average return call tracks each listener's real return rate</div></div>
-    </div>
-
     <h3>Reading the listener</h3>
     <p>The model never sees anyone's return rate; it scores one track at a time. Averaged over a listener, though, its calls track how often that person really returns, climbing from the picky regular to the open enthusiast. Across listeners the two line up closely, a correlation of 0.69.</p>
 
@@ -323,13 +320,18 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
       </table>
     </div>
 
+    <div class="figs">
+      <div class="fig"><div class="n num">0.69</div><div class="k">how the model's average return call tracks each listener's real return rate</div></div>
+    </div>
+
     <h3>Sorting a listener's tracks</h3>
-    <p>Within a single listener the model also ranks, putting the tracks they will return to a little higher. The signal is softer here. The steady regular came back to 26% of what they met, and the model kept most of its calls low, spending its confidence on the one track it was sure of.</p>
+    <p>Within a single listener the model also ranks, putting the tracks they will return to a little higher, though the signal is softer here. Two of them up close:</p>
 
     <div class="tablewrap">
       <table>
+        <caption>the steady regular, who came back to 26%</caption>
         <thead>
-          <tr><th>the steady regular</th><th>track</th><th>model's predicted chance of return</th><th>came back?</th></tr>
+          <tr><th>artist</th><th>track</th><th>model's predicted chance of return</th><th>came back?</th></tr>
         </thead>
         <tbody>
           <tr><td>Beck</td><td>Loser</td><td class="num">86%</td><td class="ret-yes">yes</td></tr>
@@ -342,12 +344,13 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
       </table>
     </div>
 
-    <p>The open enthusiast came back to 76%. The model rated most of their tracks high, and the one it doubted was the one they skipped.</p>
+    <p>It kept most of its calls low, and spent its confidence on the one track it was sure of.</p>
 
     <div class="tablewrap">
       <table>
+        <caption>the open enthusiast, who came back to 76%</caption>
         <thead>
-          <tr><th>the open enthusiast</th><th>track</th><th>model's predicted chance of return</th><th>came back?</th></tr>
+          <tr><th>artist</th><th>track</th><th>model's predicted chance of return</th><th>came back?</th></tr>
         </thead>
         <tbody>
           <tr><td>Imagine Dragons</td><td>Real Life</td><td class="num">82%</td><td class="ret-yes">yes</td></tr>
@@ -359,6 +362,8 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
         </tbody>
       </table>
     </div>
+
+    <p>Here it rated most of the tracks high, and the one it doubted was the one they skipped.</p>
 
     <p>The cold-start listener was held out of training entirely, so the model had never seen them and the per-listener rate had nothing to fit. It still sorted their tracks. Split them into the half the model rated most likely to return and the half it rated least likely: 43% of the top half came back, against 34% of the bottom half. Content is what carries the model to a listener it never trained on.</p>
 
