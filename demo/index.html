@@ -300,25 +300,25 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
 
   <section id="demo">
     <h2 class="section-title">Demo</h2>
-    <p>Numbers are one thing. Here is what the model does for three real listeners from the test years: the tracks they met for the first time, the chance it gave them of coming back, and whether they came back.</p>
-    <p>Each prediction rests on two things. Most of it is how open a listener is, which the model reads from their past plays. The rest is a nudge up or down for the particular track, by how it sounds. The first part carries most of the weight.</p>
+    <p>Numbers are one thing. Here is what the model does for three real listeners from the test years: the tracks they met for the first time, the chance it gave them of coming back to those tracks, and whether they actually came back.</p>
+    <p>Each prediction rests on two things. Most of it is how open a listener is, which the model reads from their past plays. The rest is a nudge up or down for the track itself, by how it sounds. Openness carries most of the weight. When the model has never seen a listener before, the sound is what lets it generalize.</p>
 
     <div class="figs">
-      <div class="fig"><div class="n num">0.69</div><div class="k">how the model's average call tracks each listener's real return rate</div></div>
-      <div class="fig"><div class="n num">+6 pts</div><div class="k">extra returns for the half of a listener's tracks the model ranks highest</div></div>
+      <div class="fig"><div class="n num">0.69</div><div class="k">how the model's average return call tracks each listener's real return rate</div></div>
+      <div class="fig"><div class="n num">+6 pts</div><div class="k">how much more often the tracks it ranks highest for a listener come back, versus the ones it ranks lowest</div></div>
     </div>
 
     <h3>Reading the listener</h3>
-    <p>The model never sees anyone's return rate. It reads a history and scores one track at a time. Averaged over a listener, though, its call lands near how often they really come back. It climbs from the picky regular to the open enthusiast, and across every listener with a few encounters the average call and the real rate move together, a correlation of 0.69. Most of what the model does is read how open a person is.</p>
+    <p>The model never sees anyone's return rate; it scores one track at a time. Averaged over a listener, though, its calls track how often that person really returns, climbing from the picky regular to the open enthusiast. Across listeners the two line up closely, a correlation of 0.69.</p>
 
     <div class="tablewrap">
       <table>
         <thead>
-          <tr><th>listener</th><th>new tracks met</th><th>came back to</th><th>model's average call</th></tr>
+          <tr><th>listener</th><th>new tracks met</th><th>came back to</th><th>model's average return call</th></tr>
         </thead>
         <tbody>
           <tr><td>a steady regular</td><td class="num">3,450</td><td class="num">26%</td><td class="num">28%</td></tr>
-          <tr><td>a newcomer, no history</td><td class="num">1,427</td><td class="num">39%</td><td class="num">36%</td></tr>
+          <tr><td>a cold-start listener</td><td class="num">1,427</td><td class="num">39%</td><td class="num">36%</td></tr>
           <tr><td>an open enthusiast</td><td class="num">1,474</td><td class="num">76%</td><td class="num">57%</td></tr>
         </tbody>
       </table>
@@ -330,7 +330,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     <div class="tablewrap">
       <table>
         <thead>
-          <tr><th>the steady regular</th><th>track</th><th>chance of return</th><th>came back?</th></tr>
+          <tr><th>the steady regular</th><th>track</th><th>model's predicted chance of return</th><th>came back?</th></tr>
         </thead>
         <tbody>
           <tr><td>Beck</td><td>Loser</td><td class="num">86%</td><td class="ret-yes">yes</td></tr>
@@ -348,7 +348,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     <div class="tablewrap">
       <table>
         <thead>
-          <tr><th>the open enthusiast</th><th>track</th><th>chance of return</th><th>came back?</th></tr>
+          <tr><th>the open enthusiast</th><th>track</th><th>model's predicted chance of return</th><th>came back?</th></tr>
         </thead>
         <tbody>
           <tr><td>Imagine Dragons</td><td>Real Life</td><td class="num">82%</td><td class="ret-yes">yes</td></tr>
@@ -361,10 +361,10 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
       </table>
     </div>
 
-    <p>The newcomer had no history at all, nothing to fit a rate to, and the model still ranked their tracks from sound alone. Of the ones it placed in their top half, 43% came back, against 34% in the bottom half. That is content reaching a listener the model never got to learn.</p>
+    <p>The cold-start listener was held out of training entirely, so the model had never seen them and the per-listener rate had nothing to fit. It still sorted their tracks. Split them into the half the model rated most likely to return and the half it rated least likely: 43% of the top half came back, against 34% of the bottom half. Content is what carries the model to a listener it never trained on.</p>
 
     <div class="note">
-      Across everyone the sorting is modest. Tracks the model ranks in a listener's top half come back 40% of the time, against 34% for the bottom half. A real edge, and a gentle one. Knowing the person matters more than knowing the track they just met, the same lesson this project keeps landing on.
+      Across all listeners this sorting is modest. The top-ranked half of a listener's tracks come back 40% of the time, the bottom half 34%. A real edge, and a gentle one. Knowing who the listener is matters more than knowing which track they just met, the same lesson this project keeps landing on.
     </div>
   </section>
 
