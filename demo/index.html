@@ -326,7 +326,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     </div>
 
     <h3>Sorting a listener's tracks</h3>
-    <p>Within a single listener the model also ranks tracks, putting the ones it predicts they will return to higher. For example:</p>
+    <p>Within a single listener the model also ranks tracks, putting the ones it predicts they will return to higher. Below are six tracks from each of two listeners, taken as an even spread from the model's highest call down to its lowest:</p>
 
     <div class="tablewrap">
       <table class="tracks">
@@ -369,7 +369,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     <p>The cold-start listener was held out of training entirely, so the model had never seen a single one of their plays. The prediction cannot lean on anything learned about this person; it has to generalize. It does, because neither part needs them: the running rate is tallied live from their own returns, and the content ranking reads sound, using patterns learned from other listeners. The model still sorted their tracks: it split them into the half it judged the listener most likely to return to and the half least likely, and the listener came back to 43% of the tracks in the top half, against 34% of those in the bottom half. Sound is what carries to a listener the model never trained on.</p>
 
     <div class="note">
-      Across all listeners this sorting is modest. The top-ranked half of a listener's tracks come back 40% of the time, the bottom half 34%. A real edge, and a gentle one. Knowing who the listener is matters more than knowing which track they just met, the same lesson this project keeps landing on.
+      A handful of tracks only illustrates the idea; the real measure is across all of them. Taken over every track a listener met, the sorting is modest: the top-ranked half come back 40% of the time, the bottom half 34%. A real edge, and a gentle one. Knowing who the listener is matters more than knowing which track they just met, the same lesson this project keeps landing on.
     </div>
   </section>
 
