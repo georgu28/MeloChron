@@ -303,10 +303,10 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
   <section id="demo">
     <h2 class="section-title">Demo</h2>
     <p>Numbers are one thing. Here is what the model does for three real listeners from the test years: the tracks they met for the first time, the chance it gave them of coming back to those tracks, and whether they actually came back.</p>
-    <p>Each prediction rests on two things. Most of it is how open a listener is, which a running tally of their own past returns already captures, no model needed. The rest is a nudge up or down for the track itself, by how it sounds. Openness carries most of the weight, and when the model has never seen a listener before, the sound is what lets it generalize.</p>
+    <p>Each prediction rests on two things. Most of it is how open a listener is. The rest is a nudge up or down for the track itself, by how it sounds. Openness carries most of the weight, and when the model has never seen a listener before, the sound is what lets it generalize.</p>
 
     <h3>Reading the listener</h3>
-    <p>Most of each prediction is the listener's own running return rate: the share of the tracks they have met so far that they came back to. That takes no model, just a tally, and it already captures how open someone is. The model is handed this rate and adds only a small adjustment, so its average call rises from the picky regular to the open enthusiast and tracks the real return rate closely across listeners, a correlation of 0.69. Reading the person is most of the job, and the rate does it.</p>
+    <p>Openness is just a tally: the share of the tracks a listener has met so far that they came back to, no model required. The model is handed this rate and adds only a small adjustment, so its average call per listener stays near their real return rate, rising from the picky regular to the open enthusiast. Across listeners the two track closely, a correlation of 0.69.</p>
 
     <div class="tablewrap">
       <table>
@@ -326,7 +326,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     </div>
 
     <h3>Sorting a listener's tracks</h3>
-    <p>Within a single listener the model also ranks tracks, putting tracks it predicts the listener will return to higher. For example:</p>
+    <p>Within a single listener the model also ranks tracks, putting the ones it predicts they will return to higher. For example:</p>
 
     <div class="tablewrap">
       <table class="tracks">
@@ -345,7 +345,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
       </table>
     </div>
 
-    <p>It kept most of its calls low, and spent its confidence on the one track it was sure of.</p>
+    <p>It kept most of its calls low and spent its confidence on the one track it was sure of.</p>
 
     <div class="tablewrap">
       <table class="tracks">
