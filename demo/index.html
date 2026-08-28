@@ -235,40 +235,47 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     <p>The move that worked was to stop competing with the rate and use it. I fed the running rate into the model as a fixed base and let the sequence predict only a correction on top. That made the question precise: does the listening sequence add anything the rate does not already have? I ran it with both track representations, and two ways of combining, on the same set of encounters.</p>
 
     <figure>
-      <svg viewBox="0 0 700 200" role="img" aria-label="Each version plotted by how far it beats or trails the running rate, with 95 percent intervals. The two ID versions sit left of zero, worse than the rate. The two content versions sit right of zero, better, and their intervals stay clear of zero.">
-        <line x1="343" y1="30" x2="343" y2="168" stroke="var(--line-strong)" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <svg viewBox="0 0 720 200" role="img" aria-label="Each version plotted by how far it beats or trails the running rate, with 95 percent intervals. The two ID versions sit left of zero, worse than the rate. The three content versions sit right of zero, better, and the same winning combination moves furthest right when retrained at full scale on a cloud GPU.">
+        <line x1="313" y1="28" x2="313" y2="172" stroke="var(--line-strong)" stroke-width="1.5" stroke-dasharray="4 4"/>
         <g font-family="system-ui,sans-serif" font-size="11" fill="var(--faint)">
-          <text x="221" y="190" text-anchor="middle">-0.02</text>
-          <text x="282" y="190" text-anchor="middle">-0.01</text>
-          <text x="343" y="190" text-anchor="middle" fill="var(--text)">0 = the rate</text>
-          <text x="404" y="190" text-anchor="middle">+0.01</text>
-          <text x="465" y="190" text-anchor="middle">+0.02</text>
-          <text x="526" y="190" text-anchor="middle">+0.03</text>
-          <text x="587" y="190" text-anchor="middle">+0.04</text>
+          <text x="218" y="190" text-anchor="middle">-0.02</text>
+          <text x="266" y="190" text-anchor="middle">-0.01</text>
+          <text x="313" y="190" text-anchor="middle" fill="var(--text)">0 = the rate</text>
+          <text x="361" y="190" text-anchor="middle">+0.01</text>
+          <text x="408" y="190" text-anchor="middle">+0.02</text>
+          <text x="456" y="190" text-anchor="middle">+0.03</text>
+          <text x="503" y="190" text-anchor="middle">+0.04</text>
+          <text x="551" y="190" text-anchor="middle">+0.05</text>
+          <text x="598" y="190" text-anchor="middle">+0.06</text>
+          <text x="646" y="190" text-anchor="middle">+0.07</text>
         </g>
         <g font-family="system-ui,sans-serif" font-size="13" fill="var(--text)">
-          <text x="150" y="52" text-anchor="end">ID, added on top</text>
-          <text x="150" y="88" text-anchor="end">ID, weighted in</text>
-          <text x="150" y="124" text-anchor="end">content, weighted in</text>
-          <text x="150" y="160" text-anchor="end" font-weight="650">content, added on top</text>
+          <text x="150" y="48" text-anchor="end">ID, added on top</text>
+          <text x="150" y="78" text-anchor="end">ID, weighted in</text>
+          <text x="150" y="108" text-anchor="end">content, weighted in</text>
+          <text x="150" y="138" text-anchor="end">content, added on top</text>
+          <text x="150" y="168" text-anchor="end" font-weight="700">same, full scale</text>
         </g>
-        <line x1="170" y1="48" x2="251" y2="48" stroke="var(--neg)" stroke-width="2"/>
-        <circle cx="213" cy="48" r="5" fill="var(--neg)"/>
-        <text x="690" y="52" font-size="12" fill="var(--text)" text-anchor="end" font-family="system-ui,sans-serif">-0.021</text>
-        <line x1="273" y1="84" x2="330" y2="84" stroke="var(--neg)" stroke-width="2"/>
-        <circle cx="301" cy="84" r="5" fill="var(--neg)"/>
-        <text x="690" y="88" font-size="12" fill="var(--text)" text-anchor="end" font-family="system-ui,sans-serif">-0.007</text>
-        <line x1="462" y1="120" x2="532" y2="120" stroke="var(--pos)" stroke-width="2"/>
-        <circle cx="498" cy="120" r="5" fill="var(--pos)"/>
-        <text x="690" y="124" font-size="12" fill="var(--text)" text-anchor="end" font-family="system-ui,sans-serif">+0.025</text>
-        <line x1="484" y1="156" x2="583" y2="156" stroke="var(--pos)" stroke-width="2.5"/>
-        <circle cx="534" cy="156" r="6" fill="var(--pos)"/>
-        <text x="690" y="160" font-size="12.5" fill="var(--pos)" text-anchor="end" font-weight="700" font-family="system-ui,sans-serif">+0.031</text>
+        <line x1="180" y1="44" x2="242" y2="44" stroke="var(--neg)" stroke-width="2"/>
+        <circle cx="213" cy="44" r="5" fill="var(--neg)"/>
+        <text x="712" y="48" font-size="12" fill="var(--text)" text-anchor="end" font-family="system-ui,sans-serif">-0.021</text>
+        <line x1="258" y1="74" x2="303" y2="74" stroke="var(--neg)" stroke-width="2"/>
+        <circle cx="280" cy="74" r="5" fill="var(--neg)"/>
+        <text x="712" y="78" font-size="12" fill="var(--text)" text-anchor="end" font-family="system-ui,sans-serif">-0.007</text>
+        <line x1="406" y1="104" x2="460" y2="104" stroke="var(--pos)" stroke-width="2"/>
+        <circle cx="432" cy="104" r="5" fill="var(--pos)"/>
+        <text x="712" y="108" font-size="12" fill="var(--text)" text-anchor="end" font-family="system-ui,sans-serif">+0.025</text>
+        <line x1="422" y1="134" x2="498" y2="134" stroke="var(--pos)" stroke-width="2"/>
+        <circle cx="460" cy="134" r="5" fill="var(--pos)"/>
+        <text x="712" y="138" font-size="12" fill="var(--text)" text-anchor="end" font-family="system-ui,sans-serif">+0.031</text>
+        <line x1="550" y1="164" x2="660" y2="164" stroke="var(--pos)" stroke-width="2.5"/>
+        <circle cx="603" cy="164" r="6" fill="var(--pos)"/>
+        <text x="712" y="168" font-size="12.5" fill="var(--pos)" text-anchor="end" font-weight="700" font-family="system-ui,sans-serif">+0.061</text>
       </svg>
-      <figcaption>Each row is one version, plotted by how far it beats or trails the running rate, with its 95 percent confidence interval. Left of zero is worse than the rate, right is better. Both ID versions land left, both content versions land right, and all four intervals stay clear of zero.</figcaption>
+      <figcaption>Each row is one version, plotted by how far it beats or trails the running rate, with its 95 percent confidence interval. Left of zero is worse than the rate, right is better. Both ID versions land left; all three content versions land right, intervals clear of zero, and the winning combination moves furthest right when the same model is retrained at full scale on a cloud GPU.</figcaption>
     </figure>
 
-    <p>The answer split on the representation. With IDs the correction hurt, since it carried the same overfitting. With content it helped, and beat the rate both ways of combining. The best version, audio content with the rate fed in, scored 0.4520 at the reduced config I could fit on the laptop. Scaling that same model to the full listener pool on a cloud GPU pushed it further.</p>
+    <p>The answer split on the representation. With IDs the correction hurt, since it carried the same overfitting. With content it helped, and beat the rate both ways of combining. The best version, audio content with the rate fed in, scored 0.4520 at the reduced config I could fit on the laptop. Scaling that same model to the full listener pool on a cloud GPU pushed it up to 0.4820.</p>
 
     <div class="result">
       <p>At the laptop config the best version scored 0.4520, a gain of +0.031 over the rate. Retrained at full scale on a cloud GPU, the same model reaches <b>0.4820</b>, and the margin over the rate doubles to <b>+0.061</b> <span class="num">(95% CI +0.050 to +0.073)</span>.</p>
@@ -306,7 +313,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     <p>Each prediction rests on two things. Most of it is how open a listener is. The rest is a nudge up or down for the track itself, by how it sounds. Openness carries most of the weight, and when the model has never seen a listener before, the sound is what lets it generalize.</p>
 
     <h3>Reading the listener</h3>
-    <p>Openness is just a tally: the share of the tracks a listener has met so far that they came back to, no model required. The model is handed this rate and adds only a small adjustment, so its average call per listener rises with their real return rate, from the picky regular to the open enthusiast, though it stays conservative at the very open end. Across listeners the two track closely, a correlation of 0.74.</p>
+    <p>Openness is just a tally: the share of the tracks a listener has met so far that they came back to, no model required. The model is handed this rate and adds only a small adjustment, so its average call per listener rises with their real return rate, from the picky regular to the open enthusiast, though it stays conservative at the very open end. Across listeners the two track closely, a correlation of 0.69.</p>
 
     <div class="tablewrap">
       <table>
@@ -314,42 +321,21 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
           <tr><th>listener</th><th>new tracks met</th><th>came back to</th><th>model's average return call</th></tr>
         </thead>
         <tbody>
-          <tr><td>a steady regular</td><td class="num">3,450</td><td class="num">26%</td><td class="num">23%</td></tr>
-          <tr><td>a cold-start listener</td><td class="num">1,427</td><td class="num">39%</td><td class="num">33%</td></tr>
-          <tr><td>an open enthusiast</td><td class="num">1,474</td><td class="num">76%</td><td class="num">51%</td></tr>
+          <tr><td>a steady regular</td><td class="num">3,450</td><td class="num">26%</td><td class="num">28%</td></tr>
+          <tr><td>a cold-start listener</td><td class="num">1,427</td><td class="num">39%</td><td class="num">36%</td></tr>
+          <tr><td>an open enthusiast</td><td class="num">1,474</td><td class="num">76%</td><td class="num">57%</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="figs">
-      <div class="fig"><div class="n num">0.74</div><div class="k">how the model's average return call tracks each listener's real return rate</div></div>
+      <div class="fig"><div class="n num">0.69</div><div class="k">how the model's average return call tracks each listener's real return rate</div></div>
     </div>
 
     <h3>Sorting a listener's tracks</h3>
     <p>Within a single listener the model also ranks tracks, putting the ones it predicts they will return to higher. The signal is softer here, and six named tracks only illustrate it. Two listeners up close.</p>
 
-    <p>The cold-start listener was held out of training entirely, so the model had never seen a single one of their plays; the prediction has to generalize. It does. Reading their history and the sound of each track, using patterns learned from other listeners, its most confident call came back:</p>
-
-    <div class="tablewrap">
-      <table class="tracks">
-        <caption>the cold-start listener, who came back to 39%</caption>
-        <thead>
-          <tr><th>artist</th><th>track</th><th>model's predicted chance of return</th><th>came back?</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Summoning</td><td>Northward</td><td class="num">70%</td><td class="ret-yes">yes</td></tr>
-          <tr><td>The Maccabees</td><td>Pelican</td><td class="num">43%</td><td>no</td></tr>
-          <tr><td>The Kills</td><td>Baby Says</td><td class="num">35%</td><td>no</td></tr>
-          <tr><td>Mastodon</td><td>Blue Walsh</td><td class="num">29%</td><td class="ret-yes">yes</td></tr>
-          <tr><td>Biffy Clyro</td><td>Friends And Enemies</td><td class="num">23%</td><td>no</td></tr>
-          <tr><td>Jethro Tull</td><td>My God</td><td class="num">12%</td><td>no</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <p>Across all of this listener's tracks the model's top-ranked half came back 45% of the time against 32% for the bottom half, even though it never trained on them. Content is what carries to a listener the model has never seen.</p>
-
-    <p>The open enthusiast returns to most of what they meet (76%), and here the per-track picture is noisier:</p>
+    <p>The open enthusiast returns to most of what they meet (76%), and here the ranking lines up cleanly: the five tracks the model rated highest all came back, and the only one it wrote off is the only one they passed over.</p>
 
     <div class="tablewrap">
       <table class="tracks">
@@ -358,20 +344,41 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
           <tr><th>artist</th><th>track</th><th>model's predicted chance of return</th><th>came back?</th></tr>
         </thead>
         <tbody>
-          <tr><td>Kanye West</td><td>We Don't Care</td><td class="num">84%</td><td>no</td></tr>
-          <tr><td>Thalía</td><td>Tú y Yo</td><td class="num">62%</td><td class="ret-yes">yes</td></tr>
-          <tr><td>Hollywood Undead</td><td>Hear Me Now</td><td class="num">56%</td><td>no</td></tr>
-          <tr><td>The Calling</td><td>Adrienne</td><td class="num">49%</td><td class="ret-yes">yes</td></tr>
-          <tr><td>Linkin Park</td><td>Victimized</td><td class="num">39%</td><td>no</td></tr>
-          <tr><td>Black Sabbath</td><td>Slipping Away</td><td class="num">19%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>Imagine Dragons</td><td>Real Life</td><td class="num">82%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>Story of the Year</td><td>Until the Day I Die</td><td class="num">68%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>Papa Roach</td><td>Feel Like Home</td><td class="num">62%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>Saint Asonia</td><td>Dying Slowly</td><td class="num">54%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>The Vines</td><td>Homesick</td><td class="num">47%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>Winger</td><td>Hungry</td><td class="num">25%</td><td>no</td></tr>
         </tbody>
       </table>
     </div>
 
-    <p>Its single most confident call missed, and a track it nearly wrote off came back. The tendency is right on average, but any one track is a soft bet.</p>
+    <p>That is the clean case. The next listener is softer, and it is the harder test.</p>
+
+    <p>The cold-start listener was held out of training entirely, so the model had never seen a single one of their plays; the prediction has to generalize from patterns learned on other listeners. Here its single most confident call missed:</p>
+
+    <div class="tablewrap">
+      <table class="tracks">
+        <caption>the cold-start listener, who came back to 39%</caption>
+        <thead>
+          <tr><th>artist</th><th>track</th><th>model's predicted chance of return</th><th>came back?</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Still Corners</td><td>Black Lagoon</td><td class="num">70%</td><td>no</td></tr>
+          <tr><td>Seether</td><td>Nothing Left</td><td class="num">44%</td><td>no</td></tr>
+          <tr><td>Foo Fighters</td><td>Saint Cecilia</td><td class="num">38%</td><td>no</td></tr>
+          <tr><td>Slipknot</td><td>Before I Forget</td><td class="num">32%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>The Gathering</td><td>Travel</td><td class="num">26%</td><td>no</td></tr>
+          <tr><td>Nevermore</td><td>Inside Four Walls</td><td class="num">15%</td><td class="ret-yes">yes</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>The single call is a soft bet, but the ranking still separates: across all of this listener's tracks the model's top-ranked half came back 43% of the time against 34% for the bottom half, without ever training on them. Content is what carries to a listener the model has never seen.</p>
 
     <div class="note">
-      A handful of tracks only illustrates the idea; the real measure is across all of them. Taken over every track across all listeners, the sorting is modest: the top-ranked half come back 41% of the time, the bottom half 33%. Whether a listener comes back to a track is mostly about how open they are, less about the particular track they discovered.
+      A handful of tracks only illustrates the idea; the real measure is across all of them. Taken over every track across all listeners, the sorting is modest: the top-ranked half come back 40% of the time, the bottom half 34%. Whether a listener comes back to a track is mostly about how open they are, less about the particular track they discovered. These walk-throughs use the laptop-config model, the one small enough to iterate on and reproduce; the full-scale model scores higher and sorts the same way.
     </div>
   </section>
 
