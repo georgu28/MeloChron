@@ -305,17 +305,12 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
       </table>
     </div>
     <p>These are the full-scale numbers. The model wins in every group, by a wider margin than it managed on the laptop, and all four gaps pass a paired user-bootstrap test with the 95% interval clear of zero.</p>
-  </section>
 
-  <section id="demo">
-    <h2 class="section-title">Demo</h2>
-    <p>Numbers are one thing. Here is the model laid over the whole test cohort, every first encounter it scored, seen three ways: whether its predicted chances hold up, how it ranks the cohort against the bar, and how well it reads each listener. Nothing below rests on a handful of hand-picked rows.</p>
+    <p>The same result seen four ways over the whole test cohort, half a million first encounters.</p>
 
-    <h3>Do the predicted chances hold up?</h3>
-    <p>The simplest test is to take the model at its word. I sorted all half a million first encounters by the chance it gave them of coming back, split them into ten equal groups, and put the average chance it predicted in each group next to how many actually returned. If the numbers mean anything, the two should sit on the diagonal.</p>
-
+    <h3>It is calibrated</h3>
     <figure>
-        <svg viewBox="0 0 700 430" role="img" aria-label="Reliability curve: the model predicted chance of return against the actual return rate for ten equal groups of the cohort. The points follow the diagonal of perfect agreement, running slightly confident at the high end.">
+        <svg viewBox="0 0 700 430" role="img" aria-label="Calibration: the predicted chance of return against the actual return rate for ten equal slices of the cohort, sitting close to the diagonal of perfect agreement.">
         <g font-family="system-ui,sans-serif" font-size="11" fill="var(--faint)">
         <line x1="80" y1="380.0" x2="600" y2="380.0" stroke="var(--line)" stroke-width="1"/>
         <text x="72" y="384.0" text-anchor="end">0%</text>
@@ -355,17 +350,15 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
         <circle cx="387.7" cy="190.6" r="4.5" fill="var(--accent)"/>
         <circle cx="438.9" cy="165.4" r="4.5" fill="var(--accent)"/>
         <circle cx="566.4" cy="90.6" r="4.5" fill="var(--accent)"/>
-        <text x="340.0" y="422" font-family="system-ui,sans-serif" font-size="13" fill="var(--text)" text-anchor="middle">the chance the model gave</text>
-        <text x="26" y="205.0" font-family="system-ui,sans-serif" font-size="13" fill="var(--text)" text-anchor="middle" transform="rotate(-90 26 205.0)">how many came back</text>
+        <text x="340.0" y="422" font-family="system-ui,sans-serif" font-size="13" fill="var(--text)" text-anchor="middle">chance the model predicted</text>
+        <text x="24" y="205.0" font-family="system-ui,sans-serif" font-size="13" fill="var(--text)" text-anchor="middle" transform="rotate(-90 24 205.0)">how often they came back</text>
         </svg>
-      <figcaption>Each dot is one tenth of the cohort, from least likely to return on the left to most likely on the right. The dashed line is perfect agreement. The model hugs it from about 11% upward and only runs a little confident at the very top, where it says 66% and 58% come back. Predicted chance and real return rate rise together across the whole range.</figcaption>
+      <figcaption>Sort every encounter by the chance the model gave it and split into ten equal slices. Each dot is one slice: its average predicted chance against how many actually came back. The dots sit on the diagonal, running a little confident only at the very top.</figcaption>
     </figure>
 
-    <h3>Ranking the whole cohort</h3>
-    <p>The headline metric is PR-AUC, the area under the precision-recall curve, which rewards putting the returners above the rest. Here are all three on the same axes: blind guessing at the base rate, the training-free running rate that was the bar to beat, and the content model with that rate fed in.</p>
-
+    <h3>It ranks above the bar</h3>
     <figure>
-        <svg viewBox="0 0 700 430" role="img" aria-label="Precision-recall curves: the content model at area 0.4820 stays above the training-free running rate at 0.4212, and both stay above the base-rate floor at 0.3079.">
+        <svg viewBox="0 0 700 430" role="img" aria-label="Precision against recall: the content model at area 0.4820 stays above the running rate at 0.4212, and both stay above the base-rate floor at 0.3079.">
         <g font-family="system-ui,sans-serif" font-size="11" fill="var(--faint)">
         <line x1="80" y1="380.0" x2="600" y2="380.0" stroke="var(--line)" stroke-width="1"/>
         <text x="72" y="384.0" text-anchor="end">0</text>
@@ -387,7 +380,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
         <polyline points="80.0,30.0 86.6,123.2 93.2,141.4 99.8,157.4 106.3,170.8 112.9,178.7 119.5,185.9 126.1,190.8 132.7,196.2 139.2,198.8 145.8,202.3 152.4,205.4 159.0,207.9 165.6,209.5 172.1,210.8 178.7,213.6 185.3,215.0 191.9,216.9 198.5,218.5 205.1,220.3 211.7,221.7 218.2,223.2 224.8,224.3 231.4,225.5 238.0,226.9 244.6,228.4 251.1,229.5 257.7,230.8 264.3,231.6 270.9,232.4 277.4,233.2 284.0,233.9 290.7,234.9 297.2,235.5 303.8,236.0 310.4,236.9 317.0,237.6 323.6,238.4 330.1,239.1 336.7,240.5 343.3,240.9 349.9,241.6 356.4,242.2 363.0,242.7 369.6,243.4 376.2,244.1 382.8,244.6 389.3,245.3 396.0,245.9 402.6,247.0 409.1,247.0 415.7,247.5 422.3,248.1 428.9,248.9 435.4,249.3 442.0,250.0 448.6,250.7 455.2,251.6 461.8,252.3 468.3,252.9 474.9,253.5 481.5,254.1 488.1,254.7 494.7,255.3 501.3,256.0 507.9,256.5 514.4,257.2 521.0,257.9 527.6,258.5 534.2,259.1 540.8,259.9 547.3,260.6 553.9,261.4 560.5,262.3 567.1,263.2 573.7,264.3 580.2,265.3 586.8,266.6 593.4,268.4 600.0,272.2" fill="none" stroke="var(--faint)" stroke-width="2"/>
         <polyline points="80.0,30.0 86.6,65.4 93.2,81.8 99.8,97.5 106.3,110.3 112.9,121.3 119.5,130.5 126.1,138.6 132.7,145.3 139.2,151.6 145.8,157.7 152.4,162.9 159.0,167.4 165.6,171.5 172.1,174.5 178.7,177.8 185.3,181.2 191.9,183.9 198.5,186.7 205.1,189.3 211.7,191.8 218.2,194.0 224.8,196.1 231.4,198.0 238.0,200.2 244.6,202.0 251.1,203.9 257.7,205.7 264.3,207.3 270.9,208.8 277.4,210.5 284.0,212.1 290.7,213.6 297.2,215.0 303.8,216.4 310.4,217.6 317.0,218.9 323.6,220.3 330.1,221.7 336.7,223.0 343.3,224.1 349.9,225.2 356.4,226.3 363.0,227.7 369.6,228.9 376.2,230.2 382.8,231.3 389.3,232.3 396.0,233.3 402.6,234.3 409.1,235.4 415.7,236.5 422.3,237.6 428.9,238.7 435.4,239.8 442.0,240.8 448.6,241.8 455.2,242.8 461.8,243.8 468.3,244.8 474.9,245.8 481.5,246.8 488.1,247.8 494.7,248.8 501.3,249.8 507.9,250.8 514.4,251.8 521.0,252.9 527.6,254.1 534.2,255.2 540.8,256.3 547.3,257.5 553.9,258.6 560.5,259.8 567.1,261.2 573.7,262.6 580.2,264.0 586.8,265.8 593.4,268.0 600.0,272.2" fill="none" stroke="var(--accent)" stroke-width="3"/>
         <text x="340.0" y="422" font-family="system-ui,sans-serif" font-size="13" fill="var(--text)" text-anchor="middle">recall</text>
-        <text x="26" y="205.0" font-family="system-ui,sans-serif" font-size="13" fill="var(--text)" text-anchor="middle" transform="rotate(-90 26 205.0)">precision</text>
+        <text x="24" y="205.0" font-family="system-ui,sans-serif" font-size="13" fill="var(--text)" text-anchor="middle" transform="rotate(-90 24 205.0)">precision</text>
         <g font-family="system-ui,sans-serif" font-size="13" fill="var(--text)">
         <line x1="400" y1="60" x2="434" y2="60" stroke="var(--accent)" stroke-width="3"/>
         <text x="444" y="64">content + rate, area 0.4820</text>
@@ -397,14 +390,12 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
         <text x="444" y="116">base rate, 0.3079</text>
         </g>
         </svg>
-      <figcaption>Precision against recall over the cohort; higher and further right is better. The content model stays above the running rate at almost every recall, and both stay well clear of the base-rate floor. The gap between the two solid curves is the whole contribution of the sound of the tracks.</figcaption>
+      <figcaption>Precision against recall. The content model stays above the training-free running rate at almost every recall, and both clear the base-rate floor. The gap between the solid lines is what the sound of the tracks adds.</figcaption>
     </figure>
 
-    <h3>Reading each listener</h3>
-    <p>Most of any prediction is simply how open a listener is, and the model recovers that well. For every listener with a handful of encounters, its average call across their tracks lines up with how often they really come back.</p>
-
+    <h3>It reads each listener</h3>
     <figure>
-        <svg viewBox="0 0 700 430" role="img" aria-label="Each listener plotted by the model average predicted chance for them against their real return rate. Across 1,301 listeners the two track closely, correlation 0.74.">
+        <svg viewBox="0 0 700 430" role="img" aria-label="Each listener plotted by the model average predicted call against their real return rate; across 1,301 listeners the two track closely, correlation 0.74.">
         <g font-family="system-ui,sans-serif" font-size="11" fill="var(--faint)">
         <line x1="80" y1="380.0" x2="600" y2="380.0" stroke="var(--line)" stroke-width="1"/>
         <text x="72" y="384.0" text-anchor="end">0%</text>
@@ -1731,16 +1722,16 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
         <circle cx="271.2" cy="244.9" r="5.5" fill="var(--accent)" stroke="var(--bg)" stroke-width="1.5"/>
         <circle cx="377.0" cy="114.0" r="5.5" fill="var(--accent)" stroke="var(--bg)" stroke-width="1.5"/>
         </g>
-        <text x="340.0" y="422" font-family="system-ui,sans-serif" font-size="13" fill="var(--text)" text-anchor="middle">the model's average call for the listener</text>
-        <text x="26" y="205.0" font-family="system-ui,sans-serif" font-size="13" fill="var(--text)" text-anchor="middle" transform="rotate(-90 26 205.0)">their real return rate</text>
+        <text x="340.0" y="422" font-family="system-ui,sans-serif" font-size="13" fill="var(--text)" text-anchor="middle">the model's average call for a listener</text>
+        <text x="24" y="205.0" font-family="system-ui,sans-serif" font-size="13" fill="var(--text)" text-anchor="middle" transform="rotate(-90 24 205.0)">their real return rate</text>
         </svg>
-      <figcaption>Each faint dot is one listener: the model's average predicted chance for them against their real return rate. The three filled dots are the listeners in the table below. Across 1,301 listeners the two track closely, a correlation of 0.74. The model stays a touch conservative for the most open listeners, the dots that sit above the line on the right.</figcaption>
+      <figcaption>Each faint dot is one listener: the model's average call for them against their real return rate. The three filled dots are named below. Across 1,301 listeners the two move together, a correlation of 0.74, staying a touch conservative for the most open listeners.</figcaption>
     </figure>
 
     <div class="tablewrap">
       <table>
         <thead>
-          <tr><th>listener</th><th>new tracks met</th><th>came back to</th><th>model's average return call</th></tr>
+          <tr><th>listener</th><th>new tracks met</th><th>came back to</th><th>model's average call</th></tr>
         </thead>
         <tbody>
           <tr><td>a steady regular</td><td class="num">3,450</td><td class="num">26%</td><td class="num">23%</td></tr>
@@ -1750,11 +1741,9 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
       </table>
     </div>
 
-    <h3>Sorting a listener's tracks</h3>
-    <p>The softer signal is inside a single listener: among the tracks one person met, do the ones the model rated higher actually come back more? I split each listener's tracks at their own median predicted chance and pooled the two halves across everyone.</p>
-
+    <h3>It sorts within a listener</h3>
     <figure>
-        <svg viewBox="0 0 700 240" role="img" aria-label="The model top-ranked half of a listener's tracks came back 41% of the time against 33% for the bottom half.">
+        <svg viewBox="0 0 700 240" role="img" aria-label="The half of a listener tracks the model ranked higher came back 41% of the time against 33% for the lower half.">
         <g font-family="system-ui,sans-serif">
         <rect x="230" y="66.7" width="90" height="123.3" fill="var(--accent)" rx="3"/>
         <text x="275" y="56.7" font-size="20" font-weight="700" fill="var(--accent)" text-anchor="middle">41%</text>
@@ -1763,14 +1752,190 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
         <text x="475" y="81.9" font-size="20" font-weight="700" fill="var(--faint)" text-anchor="middle">33%</text>
         <text x="475" y="214" font-size="13" fill="var(--text)" text-anchor="middle">tracks it ranked lower</text>
         <line x1="200" y1="190" x2="560" y2="190" stroke="var(--line-strong)" stroke-width="1.5"/>
-        </g>
-        </svg>
-      <figcaption>Pooled over every listener, the half of their tracks the model ranked higher came back 41% of the time against 33% for the half it ranked lower.</figcaption>
+        </g></svg>
+      <figcaption>Split each listener's tracks at their own median predicted chance. The higher-rated half comes back 41% of the time against 33% for the lower half: a real edge, but a gentle one. Any single track is a soft bet.</figcaption>
     </figure>
+  </section>
 
-    <div class="note">
-      The edge inside a listener is real but modest: any single track is a soft bet. Whether someone comes back is mostly about how open they are, less about the particular track they discovered, which is why the between-listener signal above is the strong one and this one is the gentle one.
+
+  <section id="demo">
+    <h2 class="section-title">Demo</h2>
+    <p>Pick a listener and walk through the tracks they met for the first time. The model makes its call before you see what happened, and it turns green when that call landed closer to reality than simply betting the cohort average of 31%, red when it did not. Most of what the model is doing is reading how open the listener is: for someone who leans clearly it is confidently right, and for a genuine fifty-fifty listener any single track is a coin toss.</p>
+
+  <style>
+  :root{ --good:#157f3c; --good-bg:#e8f4ec; --neg-bg:#f8eae7; }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ --good:#4cc98a; --good-bg:#15241c; --neg-bg:#2a1b19; } }
+  :root[data-theme="dark"]{ --good:#4cc98a; --good-bg:#15241c; --neg-bg:#2a1b19; }
+  .demo{display:flex; flex-direction:column; gap:1.1rem; margin:1.4rem 0}
+  .demo-tabs{display:flex; flex-wrap:wrap; gap:.5rem}
+  .demo-tab{font:inherit; font-size:.9rem; padding:.4rem .8rem; border-radius:999px; cursor:pointer;
+    background:var(--surface); border:1px solid var(--line); color:var(--faint)}
+  .demo-tab[aria-selected="true"]{border-color:var(--accent); color:var(--accent); font-weight:650}
+  .demo-card{border:1px solid var(--line-strong); border-radius:12px; background:var(--surface);
+    padding:1.2rem 1.3rem; transition:border-color .35s, background .35s}
+  .demo-card.good{border-color:var(--good); background:var(--good-bg)}
+  .demo-card.bad{border-color:var(--neg); background:var(--neg-bg)}
+  .demo-meta{font-size:.78rem; letter-spacing:.05em; text-transform:uppercase; color:var(--faint)}
+  .demo-song{font-size:1.35rem; font-weight:700; letter-spacing:-.01em; margin:.15rem 0 .05rem; text-wrap:balance}
+  .demo-artist{font-size:1rem; color:var(--text)}
+  .demo-gauge{margin:1rem 0 .3rem}
+  .demo-gauge-top{display:flex; justify-content:space-between; align-items:baseline; font-size:.85rem; color:var(--faint)}
+  .demo-gauge-top b{font-size:1.15rem; color:var(--text); font-variant-numeric:tabular-nums}
+  .demo-bar{position:relative; height:14px; background:var(--bg); border:1px solid var(--line); border-radius:999px; overflow:hidden}
+  .demo-bar>span{display:block; height:100%; width:0; background:var(--accent); transition:width .5s ease}
+  .demo-avg{position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--faint)}
+  .demo-verdict{margin-top:.9rem; font-size:1rem; min-height:1.5em; color:var(--text)}
+  .demo-verdict b.good{color:var(--good)} .demo-verdict b.bad{color:var(--neg)}
+  .demo-controls{display:flex; flex-wrap:wrap; gap:.6rem}
+  .demo-controls button{font:inherit; font-size:.92rem; padding:.5rem .95rem; border-radius:8px; cursor:pointer;
+    background:var(--accent); color:var(--bg); border:1px solid var(--accent)}
+  .demo-controls button.ghost{background:var(--surface); color:var(--text); border-color:var(--line-strong)}
+  .demo-controls button:disabled{opacity:.45; cursor:default}
+  .demo-score{font-size:.95rem; color:var(--text)}
+  .demo-score b{font-variant-numeric:tabular-nums; color:var(--accent)}
+  .demo canvas{width:100%; height:auto; display:block}
+  @media (prefers-reduced-motion:reduce){
+    .demo-card,.demo-bar>span{transition:none}
+  }
+  </style>
+    <div class="demo" id="demo-app">
+      <div class="demo-tabs" id="demo-tabs" role="tablist" aria-label="Choose a listener"></div>
+
+      <div class="demo-card" id="demo-card">
+        <div class="demo-meta" id="demo-meta">track 1 of 32</div>
+        <div class="demo-song" id="demo-song"></div>
+        <div class="demo-artist" id="demo-artist"></div>
+        <div class="demo-gauge">
+          <div class="demo-gauge-top"><span>the model's call: chance they come back</span><b id="demo-pct"></b></div>
+          <div class="demo-bar"><span id="demo-fill"></span><i class="demo-avg" id="demo-avg" title="cohort average, 31%"></i></div>
+        </div>
+        <div class="demo-verdict" id="demo-verdict" aria-live="polite"></div>
+      </div>
+
+      <div class="demo-controls">
+        <button id="demo-reveal">Reveal</button>
+        <button id="demo-next" class="ghost" disabled>Next track</button>
+        <button id="demo-auto" class="ghost">Auto play</button>
+      </div>
+      <div class="demo-score">Better call than the average: <b id="demo-hits">0</b> of <b id="demo-n">0</b> so far.</div>
+
+      <figure style="margin:.4rem 0 0">
+        <canvas id="demo-canvas" width="700" height="280" role="img" aria-label="A running share of tracks on which the model beat the average guess, updating as you reveal each outcome."></canvas>
+        <figcaption>The share of revealed tracks where the model beat the average guess, updating as you go. The dashed line at 50% is a coin flip.</figcaption>
+      </figure>
     </div>
+
+    <div class="note">This is the between-listener signal from the Results seen up close. The model gauges how often each listener comes back and shapes every call around it, so it beats the average roughly nine times in ten for the picky listener and three in four for the open one. The fifty-fifty listener is the honest limit: when someone returns to about half of what they meet, no model can call a single track, and the line sits near the coin. Correct here means the model's probability was closer to what happened than betting the cohort average every time, which rewards a well-judged chance rather than a hard yes or no.</div>
+
+    <script>
+(function(){
+  var DATA = {"base_rate": 0.3079, "listeners": [{"label": "An open enthusiast", "role": "open", "return_rate": 0.76, "n_total": 1474, "beats_average": 0.753, "tracks": [{"artist": "Klaxons", "song": "Surfing the Void", "p": 0.289, "ret": false}, {"artist": "Placebo", "song": "Taste in Men", "p": 0.352, "ret": true}, {"artist": "Tamara Gachechiladze", "song": "Keep The Faith", "p": 0.391, "ret": true}, {"artist": "Nickelback", "song": "Song On Fire", "p": 0.333, "ret": true}, {"artist": "Linkin Park", "song": "Roads Untraveled", "p": 0.389, "ret": true}, {"artist": "Paramore", "song": "Caught in the Middle", "p": 0.371, "ret": true}, {"artist": "Story of the Year", "song": "Bang Bang", "p": 0.518, "ret": true}, {"artist": "Poets of the Fall", "song": "Moonlight Kissed", "p": 0.468, "ret": true}, {"artist": "The Rasmus", "song": "Crystalline", "p": 0.596, "ret": true}, {"artist": "U2", "song": "Get Out Of Your Own Way", "p": 0.438, "ret": true}, {"artist": "Hollywood Undead", "song": "Ghost Beach", "p": 0.405, "ret": true}, {"artist": "Britney Spears", "song": "I Run Away", "p": 0.549, "ret": true}, {"artist": "The Chainsmokers", "song": "You Owe Me", "p": 0.567, "ret": false}, {"artist": "Theory of a Deadman", "song": "Wicked Game", "p": 0.667, "ret": false}, {"artist": "Ryan O'Shaughnessy", "song": "Together", "p": 0.569, "ret": true}, {"artist": "Jeremy Soule", "song": "Wind From the Depths", "p": 0.53, "ret": false}, {"artist": "The Vines", "song": "1969", "p": 0.57, "ret": false}, {"artist": "Lenny Kravitz", "song": "5 More Days 'til Summer", "p": 0.472, "ret": true}, {"artist": "The All-American Rejects", "song": "One More Sad Song", "p": 0.31, "ret": true}, {"artist": "Blindside", "song": "Pitiful", "p": 0.521, "ret": true}, {"artist": "The Sounds", "song": "Seven Days a Week", "p": 0.643, "ret": true}, {"artist": "The Prodigy", "song": "Resonate", "p": 0.684, "ret": true}, {"artist": "Finger Eleven", "song": "Thousand Mile Wish", "p": 0.538, "ret": true}, {"artist": "Celldweller", "song": "The Last Firstborn", "p": 0.646, "ret": true}, {"artist": "Anastacia", "song": "Where Do I Belong", "p": 0.608, "ret": true}, {"artist": "Kanye West", "song": "We Don't Care", "p": 0.843, "ret": false}, {"artist": "Alphaville", "song": "Lies", "p": 0.801, "ret": true}, {"artist": "Taproot", "song": "Calling", "p": 0.619, "ret": true}, {"artist": "LCD Soundsystem", "song": "Too Much Love", "p": 0.609, "ret": false}, {"artist": "The Kooks", "song": "Ooh La", "p": 0.578, "ret": true}, {"artist": "Heart", "song": "Who Will You Run To", "p": 0.585, "ret": false}, {"artist": "Bullet for My Valentine", "song": "Spit You Out", "p": 0.609, "ret": false}]}, {"label": "A picky listener", "role": "picky", "return_rate": 0.097, "n_total": 3106, "beats_average": 0.898, "tracks": [{"artist": "Ed Sheeran", "song": "Perfect", "p": 0.368, "ret": false}, {"artist": "Breaking Benjamin", "song": "Dance With The Devil", "p": 0.15, "ret": false}, {"artist": "Kasabian", "song": "Good Fight", "p": 0.171, "ret": false}, {"artist": "Sundara Karma", "song": "EXPLORE", "p": 0.134, "ret": false}, {"artist": "Enigma", "song": "Fata Morgana", "p": 0.125, "ret": false}, {"artist": "Carpenters", "song": "Solitaire", "p": 0.075, "ret": false}, {"artist": "Jay & The Americans", "song": "Come A Little Bit Closer", "p": 0.103, "ret": false}, {"artist": "Thee Oh Sees", "song": "The Dream", "p": 0.055, "ret": false}, {"artist": "Sara Bareilles", "song": "King of Anything", "p": 0.196, "ret": true}, {"artist": "Kylie Minogue", "song": "In Your Eyes", "p": 0.132, "ret": false}, {"artist": "Tove Lo", "song": "9th of october", "p": 0.107, "ret": false}, {"artist": "Pale Waves", "song": "My Obsession", "p": 0.066, "ret": false}, {"artist": "The Wombats", "song": "Cheetah Tongue", "p": 0.064, "ret": false}, {"artist": "David Bowie", "song": "Love Is Lost", "p": 0.045, "ret": false}, {"artist": "Khalid", "song": "Therapy", "p": 0.185, "ret": false}, {"artist": "Ashanti", "song": "Happy", "p": 0.083, "ret": false}, {"artist": "Raphael Saadiq", "song": "Still Ray", "p": 0.064, "ret": false}, {"artist": "MisterWives", "song": "Oh Love", "p": 0.114, "ret": false}, {"artist": "Maren Morris", "song": "I Could Use a Love Song", "p": 0.092, "ret": false}, {"artist": "Supertramp", "song": "Babaji", "p": 0.052, "ret": false}, {"artist": "Mika", "song": "Lollipop", "p": 0.078, "ret": false}, {"artist": "Allie X", "song": "Not So Bad in LA", "p": 0.091, "ret": false}, {"artist": "Hippo Campus", "song": "Passenger", "p": 0.077, "ret": false}, {"artist": "Motion City Soundtrack", "song": "Feel Like Rain", "p": 0.031, "ret": false}, {"artist": "Busted", "song": "Nineties", "p": 0.047, "ret": true}, {"artist": "The Story So Far", "song": "Take Me as You Please", "p": 0.102, "ret": false}, {"artist": "Tom Grennan", "song": "Aboard", "p": 0.06, "ret": false}, {"artist": "Ice-T", "song": "O.G. Original Gangster", "p": 0.08, "ret": false}, {"artist": "Girls Girls", "song": "Girls Girls", "p": 0.046, "ret": false}, {"artist": "Justin Timberlake", "song": "Never Again", "p": 0.082, "ret": false}, {"artist": "PJ Harvey", "song": "Rid of Me", "p": 0.055, "ret": false}, {"artist": "Alexandra Savior", "song": "Shades", "p": 0.046, "ret": false}]}, {"label": "A fifty-fifty listener", "role": "fifty", "return_rate": 0.494, "n_total": 1397, "beats_average": 0.523, "tracks": [{"artist": "Take That", "song": "New Day", "p": 0.32, "ret": true}, {"artist": "Steps", "song": "I Will Love Again", "p": 0.616, "ret": true}, {"artist": "The Aces", "song": "Baby Who", "p": 0.65, "ret": true}, {"artist": "WJSN", "song": "Miracle", "p": 0.511, "ret": false}, {"artist": "Carrie Underwood", "song": "I Just Can't Live a Lie", "p": 0.513, "ret": false}, {"artist": "Fickle Friends", "song": "Hello Hello", "p": 0.428, "ret": true}, {"artist": "Echosmith", "song": "Future Me", "p": 0.678, "ret": true}, {"artist": "Rita Ora", "song": "Anywhere", "p": 0.509, "ret": true}, {"artist": "First Aid Kit", "song": "Fireworks", "p": 0.403, "ret": true}, {"artist": "Kylie Minogue", "song": "Golden", "p": 0.783, "ret": true}, {"artist": "Kylie Minogue", "song": "Nothing to Lose", "p": 0.259, "ret": false}, {"artist": "St. Beauty", "song": "Caught", "p": 0.476, "ret": false}, {"artist": "CHVRCHES", "song": "Miracle", "p": 0.566, "ret": false}, {"artist": "Bülow", "song": "You & Jennifer", "p": 0.612, "ret": false}, {"artist": "DAY6", "song": "Sing Me", "p": 0.593, "ret": false}, {"artist": "Margaret", "song": "Lollipop", "p": 0.564, "ret": false}, {"artist": "Kero Kero Bonito", "song": "Heard A Song", "p": 0.578, "ret": true}, {"artist": "AlunaGeorge", "song": "Shallow Water", "p": 0.652, "ret": true}, {"artist": "Robyn", "song": "Between the Lines", "p": 0.668, "ret": false}, {"artist": "MAMAMOO", "song": "No More Drama", "p": 0.673, "ret": true}, {"artist": "Bananarama", "song": "Dance Music", "p": 0.762, "ret": true}, {"artist": "Halsey", "song": "Castle", "p": 0.748, "ret": true}, {"artist": "Maisie Peters", "song": "Stay Young", "p": 0.612, "ret": false}, {"artist": "Katerine Duska", "song": "Better Love", "p": 0.55, "ret": true}, {"artist": "Cher", "song": "Take Me Home", "p": 0.347, "ret": false}, {"artist": "Sara Bareilles", "song": "Love Song", "p": 0.231, "ret": false}, {"artist": "Christine and the Queens", "song": "No Harm Is Done (feat. Tunji Ige)", "p": 0.362, "ret": true}, {"artist": "Goldfrapp", "song": "Melancholy Sky", "p": 0.357, "ret": false}, {"artist": "Madonna", "song": "This Used to Be My Playground", "p": 0.433, "ret": true}, {"artist": "Britney Spears", "song": "Where Are You Now", "p": 0.292, "ret": false}, {"artist": "Shakira", "song": "Underneath Your Clothes", "p": 0.304, "ret": false}, {"artist": "Delta Goodrem", "song": "Heavy", "p": 0.401, "ret": false}]}]};
+  var BASE = DATA.base_rate, L = DATA.listeners;
+  var li=0, ti=0, revealed=false, hits=0, n=0, hist=[], timer=null;
+  var $ = function(id){ return document.getElementById(id); };
+  var card=$('demo-card'), meta=$('demo-meta'), song=$('demo-song'), artist=$('demo-artist'),
+      pct=$('demo-pct'), fill=$('demo-fill'), avg=$('demo-avg'), verdict=$('demo-verdict'),
+      revealBtn=$('demo-reveal'), nextBtn=$('demo-next'), autoBtn=$('demo-auto'),
+      hitsEl=$('demo-hits'), nEl=$('demo-n'), tabs=$('demo-tabs'), cv=$('demo-canvas');
+
+  L.forEach(function(l,i){
+    var b=document.createElement('button'); b.className='demo-tab'; b.textContent=l.label;
+    b.setAttribute('role','tab'); b.setAttribute('aria-selected', i===0?'true':'false');
+    b.onclick=function(){ setListener(i); }; tabs.appendChild(b);
+  });
+
+  function cur(){ return L[li].tracks[ti]; }
+  function tracks(){ return L[li].tracks; }
+
+  function render(){
+    var t=cur();
+    meta.textContent='track '+(ti+1)+' of '+tracks().length;
+    song.textContent=t.song; artist.textContent=t.artist;
+    pct.textContent=Math.round(t.p*100)+'%';
+    fill.style.width=(t.p*100)+'%';
+    avg.style.left=(BASE*100)+'%';
+    verdict.textContent='';
+    card.classList.remove('good','bad');
+    revealBtn.disabled=false; nextBtn.disabled=true;
+  }
+
+  function reveal(){
+    if(revealed) return;
+    revealed=true;
+    var t=cur(), out=t.ret?1:0;
+    var win=(t.p-out)*(t.p-out) < (BASE-out)*(BASE-out);
+    n++; if(win) hits++; hist.push(hits/n);
+    card.classList.add(win?'good':'bad');
+    var came = t.ret ? 'They came back.' : "They didn't come back.";
+    var judge = win ? '<b class="good">Better call than the average.</b>'
+                    : '<b class="bad">The average would have called it better.</b>';
+    verdict.innerHTML = came+' '+judge;
+    hitsEl.textContent=hits; nEl.textContent=n;
+    revealBtn.disabled=true;
+    var last = ti >= tracks().length-1;
+    nextBtn.disabled = last;
+    if(last) stopAuto();
+    draw();
+  }
+
+  function next(){
+    if(ti < tracks().length-1){ ti++; revealed=false; render(); }
+  }
+
+  function setListener(i){
+    stopAuto();
+    li=i; ti=0; revealed=false; hits=0; n=0; hist=[];
+    Array.prototype.forEach.call(tabs.children, function(b,k){ b.setAttribute('aria-selected', k===i?'true':'false'); });
+    hitsEl.textContent=0; nEl.textContent=0;
+    render(); draw();
+  }
+
+  function stopAuto(){ if(timer){ clearInterval(timer); timer=null; autoBtn.textContent='Auto play'; autoBtn.classList.add('ghost'); } }
+  function toggleAuto(){
+    if(timer){ stopAuto(); return; }
+    autoBtn.textContent='Stop'; autoBtn.classList.remove('ghost');
+    var step=function(){ if(!revealed){ reveal(); } else { next(); } };
+    timer=setInterval(step, 1500);
+  }
+
+  function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || '#888'; }
+  function draw(){
+    var w=cv.width, h=cv.height, ctx=cv.getContext('2d');
+    var padL=54, padR=16, padT=16, padB=34;
+    ctx.clearRect(0,0,w,h);
+    var accent=css('--accent'), faint=css('--faint'), line=css('--line'), text=css('--text');
+    var x0=padL, x1=w-padR, y0=padT, y1=h-padB;
+    var yv=function(v){ return y1-(v)*(y1-y0); };
+    // gridlines + y labels
+    ctx.font='12px system-ui,sans-serif'; ctx.textBaseline='middle';
+    [0,0.25,0.5,0.75,1].forEach(function(v){
+      ctx.strokeStyle=line; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x0,yv(v)); ctx.lineTo(x1,yv(v)); ctx.stroke();
+      ctx.fillStyle=faint; ctx.textAlign='right'; ctx.fillText(Math.round(v*100)+'%', x0-8, yv(v));
+    });
+    // coin-flip reference
+    ctx.strokeStyle=faint; ctx.setLineDash([5,5]); ctx.beginPath(); ctx.moveTo(x0,yv(0.5)); ctx.lineTo(x1,yv(0.5)); ctx.stroke(); ctx.setLineDash([]);
+    // axis labels
+    ctx.fillStyle=text; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+    ctx.fillText('tracks revealed', (x0+x1)/2, h-8);
+    // line
+    var total=tracks().length;
+    var xv=function(k){ return x0 + (total<=1?0:(k/(total-1)))*(x1-x0); };
+    if(hist.length){
+      ctx.strokeStyle=accent; ctx.lineWidth=3; ctx.beginPath();
+      hist.forEach(function(v,k){ var X=xv(k), Y=yv(v); if(k===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y); });
+      ctx.stroke();
+      var lastX=xv(hist.length-1), lastY=yv(hist[hist.length-1]);
+      ctx.fillStyle=accent; ctx.beginPath(); ctx.arc(lastX,lastY,4,0,7); ctx.fill();
+    }
+  }
+
+  revealBtn.onclick=function(){ stopAuto(); reveal(); };
+  nextBtn.onclick=function(){ stopAuto(); next(); };
+  autoBtn.onclick=toggleAuto;
+  var tg=$('tg'); if(tg){ tg.addEventListener('click', function(){ setTimeout(draw,30); }); }
+  setListener(0);
+})();
+</script>
   </section>
 
   <section id="wrong">
