@@ -85,7 +85,29 @@ Paired verdicts, all significant: `tf-musicnn − id-priors` +0.024 (all) and +0
 (cold_user); `tf-genre − id-pure` +0.029; `tf-musicnn − tf-genre` +0.028; `incontext −
 user×item` +0.11. `tf-musicnn − incontext` is a tie. The winning residual model, a
 content sequence over a fixed in-context base, scores 0.4520 (all), a paired +0.031
-[+0.023, +0.039] over the rate, and wins every slice.
+[+0.023, +0.039] over the rate, and wins every slice (see Scaling up for the full-config
+number).
+
+## Scaling up (full config on a cloud GPU)
+
+The 0.4520 result was trained at a reduced config (15k users, history 100) forced by a
+6 GB laptop. Retraining the same content + in-context residual model at full config on a
+cloud GPU (the whole ~100k-user training pool, history 200) and scoring it on the
+identical fixed cohort improves every number:
+
+| slice | base | in-context rate | content+rate (laptop, 15k/100) | content+rate (cloud, 100k/200) |
+|---|---|---|---|---|
+| all | 0.3079 | 0.4212 | 0.4520 | 0.4820 |
+| cold_user | 0.2898 | 0.3776 | 0.4106 | 0.4224 |
+| unfamiliar | 0.2860 | 0.3706 | 0.4048 | 0.4379 |
+| new_neighborhood | 0.3064 | 0.3730 | 0.4062 | 0.4457 |
+
+The paired advantage over the training-free in-context rate roughly doubles at full scale:
+all +0.061 [+0.050, +0.073], cold_user +0.049, unfamiliar +0.067, new_neighborhood +0.072,
+every interval clear of 0. More users and a longer window help the content model, exactly
+as expected: a shared content projection keeps generalizing rather than memorizing. This
+confirms the reduced-config numbers were a floor. Reproduce with
+`scripts/score_checkpoint.py --checkpoint <best.pt>`.
 
 ## The demo
 
@@ -101,9 +123,9 @@ a real but modest edge. The write-up at https://melochron.vercel.app walks throu
 
 A training-free in-context rate is the strongest single adoption signal, and no ID model
 beats it. But it is not the ceiling. The best content encoder, handed that rate as a
-fixed base it can only add to, significantly beats it (+0.031 overall, +0.036 cold_user),
-the first model to do so, and it needs no ID table, so it also covers cold users and
-items. The story is the item representation: an ID sequence adds nothing over the rate
+fixed base it can only add to, significantly beats it (+0.031 overall at the laptop
+config, +0.061 at full scale on a cloud GPU), the first model to do so, and it needs no ID
+table, so it also covers cold users and items. The story is the item representation: an ID sequence adds nothing over the rate
 because its learned correction overfits under drift, while a content sequence adds real
 taste signal on top. The most durable results are the analysis: the in-context rate is
 the bar, "content is weak" was a method artifact, learned audio beats genre, time between
@@ -112,9 +134,10 @@ listens matters, and the cold-item catastrophe does not transfer.
 ## Limitations
 
 Single seed and split. Temporal drift miscalibrates every train-fitted prior on the test
-period. The config was reduced (15k users, history length 100) to fit a 6 GB laptop GPU
-with 5.8 GB RAM; a `max_len` sweep confirms the conclusions hold. Content is genre and
-audio only, since the Onion release has no artist metadata. The hybrid item
+period. The headline 0.4520 was trained at a reduced config (15k users, history 100) to
+fit a 6 GB laptop GPU with 5.8 GB RAM; a `max_len` sweep confirmed the conclusions held,
+and a full-config cloud run (100k users, history 200) improved it to 0.4820 (see Scaling
+up). Content is genre and audio only, since the Onion release has no artist metadata. The hybrid item
 representation is numerically fragile under fp16, worked around with the residual-free
 `text_frozen` variant. Training covers 2005 to 2020 listening, so a live account today
 would be out of distribution.

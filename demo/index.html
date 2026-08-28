@@ -194,7 +194,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
       <figcaption>The encoder summarizes the play history, the candidate track becomes a vector in the same space, and the predictor combines the two, along with how they interact, into a probability of return. The track vector, an ID or a description of the track's sound, is the one piece the iteration changes.</figcaption>
     </figure>
 
-    <p>The encoder is a Transformer, the self-attention architecture behind language models, reading listening histories instead of text. It has 2 attention blocks and 2 heads at a width of 128, and reads up to the 100 most recent plays. It goes through them in order, learns which ones matter, and folds in the time gaps between plays, bucketed into a learned time encoding, since how recently and how densely someone listens says a lot about whether they come back.</p>
+    <p>The encoder is a Transformer, the self-attention architecture behind language models, reading listening histories instead of text. It has 2 attention blocks and 2 heads at a width of 128, and reads up to the 200 most recent plays. It goes through them in order, learns which ones matter, and folds in the time gaps between plays, bucketed into a learned time encoding, since how recently and how densely someone listens says a lot about whether they come back.</p>
     <p>A few details:</p>
     <ul>
       <li>The encoder is strictly causal, looking only backward in time, so an encounter is scored using only earlier plays, never the future.</li>
@@ -206,8 +206,8 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     <ul>
       <li>About 468,000 trained parameters: the 2-block Transformer (roughly 419,000) plus the head (about 49,000).</li>
       <li>Underneath sits a frozen table of precomputed audio embeddings, 56,513 tracks by 50 values, 2.8 million in all. The model reads it as an input rather than learning it.</li>
-      <li>Width 128, 2 blocks, 2 heads, history length 100, dropout 0.2.</li>
-      <li>Trained on 15,000 listeners on a single 6 GB laptop GPU.</li>
+      <li>Width 128, 2 blocks, 2 heads, history length 200, dropout 0.2.</li>
+      <li>Developed on a single 6 GB laptop GPU at a reduced config (15,000 listeners, history 100), then retrained at full scale on a cloud GPU: the whole pool of about 100,000 listeners with a history of 200. The full-scale run is the headline below.</li>
     </ul>
   </section>
 
@@ -268,10 +268,10 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
       <figcaption>Each row is one version, plotted by how far it beats or trails the running rate, with its 95 percent confidence interval. Left of zero is worse than the rate, right is better. Both ID versions land left, both content versions land right, and all four intervals stay clear of zero.</figcaption>
     </figure>
 
-    <p>The answer split on the representation. With IDs the correction hurt, since it carried the same overfitting. With content it helped, and beat the rate both ways of combining. The best version, audio content with the rate fed in, scored 0.4520.</p>
+    <p>The answer split on the representation. With IDs the correction hurt, since it carried the same overfitting. With content it helped, and beat the rate both ways of combining. The best version, audio content with the rate fed in, scored 0.4520 at the reduced config I could fit on the laptop. Scaling that same model to the full listener pool on a cloud GPU pushed it further.</p>
 
     <div class="result">
-      <p>The best model scores <b>0.4520</b> against the running rate's <b>0.4212</b>. The gain is <b>+0.031</b>, and it holds up under a proper significance test, <span class="num">95% CI +0.023 to +0.039</span>.</p>
+      <p>At the laptop config the best version scored 0.4520, a gain of +0.031 over the rate. Retrained at full scale on a cloud GPU, the same model reaches <b>0.4820</b>, and the margin over the rate doubles to <b>+0.061</b> <span class="num">(95% CI +0.050 to +0.073)</span>.</p>
     </div>
 
     <p>One more try: could richer content do better? I added lyrics and release era to the audio. It scored 0.4486, no improvement, so the audio embedding had already captured what content offers here. That is where the gains stopped.</p>
@@ -282,7 +282,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     <div class="figs">
       <div class="fig"><div class="n num">0.3079</div><div class="k">base rate<br>blind guessing</div></div>
       <div class="fig"><div class="n num">0.4212</div><div class="k">the running rate<br>the bar</div></div>
-      <div class="fig"><div class="n win num">0.4520</div><div class="k">content plus the rate<br>the best model</div></div>
+      <div class="fig"><div class="n win num">0.4820</div><div class="k">content plus the rate<br>the best model, full scale</div></div>
     </div>
     <div class="tablewrap">
       <table>
@@ -290,14 +290,14 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
           <tr><th>group of encounters</th><th>base</th><th>running rate</th><th>content plus rate</th><th>gap</th></tr>
         </thead>
         <tbody>
-          <tr><td>all</td><td class="num">0.3079</td><td class="num">0.4212</td><td class="num win-cell">0.4520</td><td class="num">+0.031</td></tr>
-          <tr><td>cold user, no history</td><td class="num">0.2898</td><td class="num">0.3776</td><td class="num win-cell">0.4106</td><td class="num">+0.033</td></tr>
-          <tr><td>unfamiliar genre</td><td class="num">0.2860</td><td class="num">0.3706</td><td class="num win-cell">0.4048</td><td class="num">+0.034</td></tr>
-          <tr><td>new neighborhood</td><td class="num">0.3064</td><td class="num">0.3730</td><td class="num win-cell">0.4062</td><td class="num">+0.033</td></tr>
+          <tr><td>all</td><td class="num">0.3079</td><td class="num">0.4212</td><td class="num win-cell">0.4820</td><td class="num">+0.061</td></tr>
+          <tr><td>cold user, no history</td><td class="num">0.2898</td><td class="num">0.3776</td><td class="num win-cell">0.4224</td><td class="num">+0.045</td></tr>
+          <tr><td>unfamiliar genre</td><td class="num">0.2860</td><td class="num">0.3706</td><td class="num win-cell">0.4379</td><td class="num">+0.067</td></tr>
+          <tr><td>new neighborhood</td><td class="num">0.3064</td><td class="num">0.3730</td><td class="num win-cell">0.4457</td><td class="num">+0.073</td></tr>
         </tbody>
       </table>
     </div>
-    <p>It wins in every group by about the same margin, and all four gaps pass a paired user-bootstrap test, with the 95% interval clear of zero.</p>
+    <p>These are the full-scale numbers. The model wins in every group, by a wider margin than it managed on the laptop, and all four gaps pass a paired user-bootstrap test with the 95% interval clear of zero.</p>
   </section>
 
   <section id="demo">
@@ -306,7 +306,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     <p>Each prediction rests on two things. Most of it is how open a listener is. The rest is a nudge up or down for the track itself, by how it sounds. Openness carries most of the weight, and when the model has never seen a listener before, the sound is what lets it generalize.</p>
 
     <h3>Reading the listener</h3>
-    <p>Openness is just a tally: the share of the tracks a listener has met so far that they came back to, no model required. The model is handed this rate and adds only a small adjustment, so its average call per listener stays near their real return rate, rising from the picky regular to the open enthusiast. Across listeners the two track closely, a correlation of 0.69.</p>
+    <p>Openness is just a tally: the share of the tracks a listener has met so far that they came back to, no model required. The model is handed this rate and adds only a small adjustment, so its average call per listener rises with their real return rate, from the picky regular to the open enthusiast, though it stays conservative at the very open end. Across listeners the two track closely, a correlation of 0.74.</p>
 
     <div class="tablewrap">
       <table>
@@ -314,38 +314,42 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
           <tr><th>listener</th><th>new tracks met</th><th>came back to</th><th>model's average return call</th></tr>
         </thead>
         <tbody>
-          <tr><td>a steady regular</td><td class="num">3,450</td><td class="num">26%</td><td class="num">28%</td></tr>
-          <tr><td>a cold-start listener</td><td class="num">1,427</td><td class="num">39%</td><td class="num">36%</td></tr>
-          <tr><td>an open enthusiast</td><td class="num">1,474</td><td class="num">76%</td><td class="num">57%</td></tr>
+          <tr><td>a steady regular</td><td class="num">3,450</td><td class="num">26%</td><td class="num">23%</td></tr>
+          <tr><td>a cold-start listener</td><td class="num">1,427</td><td class="num">39%</td><td class="num">33%</td></tr>
+          <tr><td>an open enthusiast</td><td class="num">1,474</td><td class="num">76%</td><td class="num">51%</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="figs">
-      <div class="fig"><div class="n num">0.69</div><div class="k">how the model's average return call tracks each listener's real return rate</div></div>
+      <div class="fig"><div class="n num">0.74</div><div class="k">how the model's average return call tracks each listener's real return rate</div></div>
     </div>
 
     <h3>Sorting a listener's tracks</h3>
-    <p>Within a single listener the model also ranks tracks, putting the ones it predicts they will return to higher. Below are six tracks from each of two listeners, taken as an even spread from the model's highest call down to its lowest:</p>
+    <p>Within a single listener the model also ranks tracks, putting the ones it predicts they will return to higher. The signal is softer here, and six named tracks only illustrate it. Two listeners up close.</p>
+
+    <p>The cold-start listener was held out of training entirely, so the model had never seen a single one of their plays; the prediction has to generalize. It does. Reading their history and the sound of each track, using patterns learned from other listeners, its most confident call came back:</p>
 
     <div class="tablewrap">
       <table class="tracks">
-        <caption>the steady regular, who came back to 26%</caption>
+        <caption>the cold-start listener, who came back to 39%</caption>
         <thead>
           <tr><th>artist</th><th>track</th><th>model's predicted chance of return</th><th>came back?</th></tr>
         </thead>
         <tbody>
-          <tr><td>Beck</td><td>Loser</td><td class="num">86%</td><td class="ret-yes">yes</td></tr>
-          <tr><td>Orgy</td><td>Opticon</td><td class="num">34%</td><td>no</td></tr>
-          <tr><td>Dance Gavin Dance</td><td>Philosopher King</td><td class="num">28%</td><td>no</td></tr>
-          <tr><td>Yeah Yeah Yeahs</td><td>Sacrilege</td><td class="num">24%</td><td>no</td></tr>
-          <tr><td>Jack White</td><td>Over and Over and Over</td><td class="num">20%</td><td>no</td></tr>
-          <tr><td>Life of Agony</td><td>Weeds</td><td class="num">9%</td><td>no</td></tr>
+          <tr><td>Summoning</td><td>Northward</td><td class="num">70%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>The Maccabees</td><td>Pelican</td><td class="num">43%</td><td>no</td></tr>
+          <tr><td>The Kills</td><td>Baby Says</td><td class="num">35%</td><td>no</td></tr>
+          <tr><td>Mastodon</td><td>Blue Walsh</td><td class="num">29%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>Biffy Clyro</td><td>Friends And Enemies</td><td class="num">23%</td><td>no</td></tr>
+          <tr><td>Jethro Tull</td><td>My God</td><td class="num">12%</td><td>no</td></tr>
         </tbody>
       </table>
     </div>
 
-    <p>It kept most of its calls low and spent its confidence on the one track it was sure of.</p>
+    <p>Across all of this listener's tracks the model's top-ranked half came back 45% of the time against 32% for the bottom half, even though it never trained on them. Content is what carries to a listener the model has never seen.</p>
+
+    <p>The open enthusiast returns to most of what they meet (76%), and here the per-track picture is noisier:</p>
 
     <div class="tablewrap">
       <table class="tracks">
@@ -354,22 +358,20 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
           <tr><th>artist</th><th>track</th><th>model's predicted chance of return</th><th>came back?</th></tr>
         </thead>
         <tbody>
-          <tr><td>Imagine Dragons</td><td>Real Life</td><td class="num">82%</td><td class="ret-yes">yes</td></tr>
-          <tr><td>Story of the Year</td><td>Until the Day I Die</td><td class="num">68%</td><td class="ret-yes">yes</td></tr>
-          <tr><td>Papa Roach</td><td>Feel Like Home</td><td class="num">62%</td><td class="ret-yes">yes</td></tr>
-          <tr><td>Saint Asonia</td><td>Dying Slowly</td><td class="num">54%</td><td class="ret-yes">yes</td></tr>
-          <tr><td>The Vines</td><td>Homesick</td><td class="num">47%</td><td class="ret-yes">yes</td></tr>
-          <tr><td>Winger</td><td>Hungry</td><td class="num">25%</td><td>no</td></tr>
+          <tr><td>Kanye West</td><td>We Don't Care</td><td class="num">84%</td><td>no</td></tr>
+          <tr><td>Thalía</td><td>Tú y Yo</td><td class="num">62%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>Hollywood Undead</td><td>Hear Me Now</td><td class="num">56%</td><td>no</td></tr>
+          <tr><td>The Calling</td><td>Adrienne</td><td class="num">49%</td><td class="ret-yes">yes</td></tr>
+          <tr><td>Linkin Park</td><td>Victimized</td><td class="num">39%</td><td>no</td></tr>
+          <tr><td>Black Sabbath</td><td>Slipping Away</td><td class="num">19%</td><td class="ret-yes">yes</td></tr>
         </tbody>
       </table>
     </div>
 
-    <p>Here it rated most of the tracks high, and the one it doubted was the one they skipped.</p>
-
-    <p>The cold-start listener was held out of training entirely, so the model had never seen a single one of their plays. The prediction cannot lean on anything learned about this person; it has to generalize. It does, because neither part needs them: the running rate is tallied live from their own returns, and the content ranking reads sound, using patterns learned from other listeners. The model still sorted their tracks: it split them into the half it judged the listener most likely to return to and the half least likely, and the listener came back to 43% of the tracks in the top half, against 34% of those in the bottom half. Sound is what carries to a listener the model never trained on.</p>
+    <p>Its single most confident call missed, and a track it nearly wrote off came back. The tendency is right on average, but any one track is a soft bet.</p>
 
     <div class="note">
-      A handful of tracks only illustrates the idea; the real measure is across all of them. Taken over every track across all listeners, the sorting is modest: the top-ranked half come back 40% of the time, the bottom half 34%. Whether a listener comes back to a track is mostly about how open they are, less about the particular track they discovered.
+      A handful of tracks only illustrates the idea; the real measure is across all of them. Taken over every track across all listeners, the sorting is modest: the top-ranked half come back 41% of the time, the bottom half 33%. Whether a listener comes back to a track is mostly about how open they are, less about the particular track they discovered.
     </div>
   </section>
 
@@ -394,7 +396,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     <ul>
       <li>One seed and one train/test split, so the smaller per-group margins are not yet firm.</li>
       <li>Adoption drifts down over time (0.37 to 0.31), which miscalibrates any rate fit on older data.</li>
-      <li>Trained small for a 6 GB laptop GPU; a history-length sweep says the conclusions hold at scale.</li>
+      <li>Developed at a reduced config on a 6 GB laptop; retrained at full scale on a cloud GPU, which lifted the headline to 0.4820 and roughly doubled the margin over the rate.</li>
       <li>Content only pulls ahead with the running rate alongside it; on its own it scores 0.414.</li>
       <li>Not deployed: trained on 2005 to 2020 listening, so a live account today would be out of distribution.</li>
     </ul>
@@ -402,7 +404,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
 
   <section id="next">
     <h2 class="section-title">Conclusion</h2>
-    <p>The hardest baseline to beat was a two-line running count of how often each listener comes back. The winning model feeds that count into a sequence model that describes tracks by their sound, lifting the score from 0.4212 to 0.4520. The margin is real but modest.</p>
+    <p>The hardest baseline to beat was a two-line running count of how often each listener comes back. The winning model feeds that count into a sequence model that describes tracks by their sound, lifting the score from 0.4212 to 0.4820 at full scale. The margin, +0.061, is real, and larger than the laptop config had suggested.</p>
     <p>Why is that running count so strong? I think adoption depends mostly on the listener. Some people are picky and come back to almost nothing; others are open and come back to a lot. The running rate reads that openness straight from a person's own history, no model required. Taste and the sound of a track add to it, and they matter: audio content on its own scored 0.414, a statistical tie with the rate's 0.421. Even so, most of the signal looks like how open a listener is, and content is what adds to it.</p>
     <div class="note">
       The demo earlier on this page walks three real listeners through the model's predictions against what they actually did. A live version, scoring a listener's history as it comes in, would be the next step.

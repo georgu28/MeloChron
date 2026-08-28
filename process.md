@@ -740,6 +740,35 @@ with root directory `demo`, so every push redeploys it. The headline numbers als
 
 ---
 
+## Phase 6: full-scale cloud run  ✅ done
+
+The reduced config (15k users, history 100) was forced by the 6 GB laptop. To test the
+"reduced config is a floor" hypothesis, the winning content + in-context residual model was
+retrained at full config on a cloud GPU (RunPod): the whole ~100k-user training pool and
+history 200, everything else identical (`--variant residual --item-variant text_frozen
+--text-matrix musicnn`, same split seed, same fixed cohort). The checkpoint was scored on
+the identical 500k cohort with `scripts/score_checkpoint.py`; the `incontext-alone` column
+reproduced 0.4212 exactly, confirming the scoring path.
+
+| slice | base | in-context rate | content+rate laptop (15k/100) | content+rate cloud (100k/200) |
+|---|---|---|---|---|
+| all | 0.3079 | 0.4212 | 0.4520 | 0.4820 |
+| cold_user | 0.2898 | 0.3776 | 0.4106 | 0.4224 |
+| unfamiliar | 0.2860 | 0.3706 | 0.4048 | 0.4379 |
+| new_neighborhood | 0.3064 | 0.3730 | 0.4062 | 0.4457 |
+
+Paired delta over the in-context rate, all significant: all +0.061 [+0.050, +0.073],
+cold_user +0.049, unfamiliar +0.067, new_neighborhood +0.072.
+
+**Meaning:** the reduced-config numbers were a floor, as suspected. More users and a longer
+window help the content model, consistent with the mechanism: a shared content projection
+generalizes rather than memorizing, so more data is more signal. The headline is now content
+plus the rate at 0.4820, +0.061 over the training-free bar (double the laptop margin). The
+in-context rate itself does not move, since it needs no training. Reproduce with
+`scripts/score_checkpoint.py --checkpoint <best.pt>`.
+
+---
+
 ## Limitations carried forward
 - **Single seed, single split.** Discovery-slice wins are small (+0.006).
 - **Reduced config** (15k/len100) forced by 5.8 GB RAM; the `max_len` sweep tests
@@ -775,3 +804,4 @@ with root directory `demo`, so every push redeploys it. The headline numbers als
 | D15 | Learned audio (musicnn) via `text_frozen`; genre control | settle coarse-vs-inherent: content **not weak** (arch +0.03\*, audio +0.03\*); "content weak" retracted | done |
 | D16 | Content sequence over a fixed `logit(incontext)` base (residual head) | test whether the sequence adds over the rate; content beats it +0.031\* (all), +0.036\* (cold_user), the first model to do so | done |
 | D17 | Phase 5: best-model demo with real names + web write-up, deployed to Vercel | deliver the prediction demo and a public write-up; stay honest about the modest per-listener signal | done |
+| D18 | Phase 6: full-scale retrain on a cloud GPU (RunPod), 100k users, history 200 | test the reduced-config floor; headline improves 0.4520 to 0.4820, margin over the rate doubles (+0.031 to +0.061\*) | done |

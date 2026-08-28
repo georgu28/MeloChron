@@ -112,6 +112,12 @@ def main(argv: list[str] | None = None) -> int:
         help="optional npz of the best model's per-row prob + aligned columns (for analysis)",
     )
     ap.add_argument("--per-user", type=int, default=6, help="tracks shown per user")
+    ap.add_argument(
+        "--expected-pr-auc",
+        type=float,
+        default=EXPECTED_PR_AUC,
+        help="sanity-gate target for the checkpoint's overall cohort PR-AUC (+/- 0.01)",
+    )
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = ap.parse_args(argv)
 
@@ -187,9 +193,12 @@ def main(argv: list[str] | None = None) -> int:
     # --- sanity gates: same cohort, aligned dump, reproduced headline ---
     assert np.array_equal(rows, cohort.rows), "scored rows drifted from the saved cohort"
     overall = float(average_precision_score(label, prob))
-    print(f"overall PR-AUC (sanity gate, expect ~{EXPECTED_PR_AUC}): {overall:.4f}", flush=True)
-    assert abs(overall - EXPECTED_PR_AUC) < 0.01, (
-        f"PR-AUC {overall:.4f} drifted from the reported {EXPECTED_PR_AUC}"
+    print(
+        f"overall PR-AUC (sanity gate, expect ~{args.expected_pr_auc}): {overall:.4f}",
+        flush=True,
+    )
+    assert abs(overall - args.expected_pr_auc) < 0.01, (
+        f"PR-AUC {overall:.4f} drifted from the expected {args.expected_pr_auc}"
     )
 
     # Reuse the aligned dump for the slice masks, item base rate, and user prior.
