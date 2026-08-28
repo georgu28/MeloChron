@@ -254,7 +254,8 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
           <text x="150" y="78" text-anchor="end">ID, weighted in</text>
           <text x="150" y="108" text-anchor="end">content, weighted in</text>
           <text x="150" y="138" text-anchor="end">content, added on top</text>
-          <text x="150" y="168" text-anchor="end" font-weight="700">same, full scale</text>
+          <text x="150" y="162" text-anchor="end" font-weight="700">content, added on top:</text>
+          <text x="150" y="177" text-anchor="end" font-weight="700">full scale</text>
         </g>
         <line x1="180" y1="44" x2="242" y2="44" stroke="var(--neg)" stroke-width="2"/>
         <circle cx="213" cy="44" r="5" fill="var(--neg)"/>
@@ -306,9 +307,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     </div>
     <p>These are the full-scale numbers. The model wins in every group, by a wider margin than it managed on the laptop, and all four gaps pass a paired user-bootstrap test with the 95% interval clear of zero.</p>
 
-    <p>The same result seen four ways over the whole test cohort, half a million first encounters.</p>
-
-    <h3>It is calibrated</h3>
+    <h3>Prediction vs Actual</h3>
     <figure>
         <svg viewBox="0 0 700 430" role="img" aria-label="Calibration: the predicted chance of return against the actual return rate for ten equal slices of the cohort, sitting close to the diagonal of perfect agreement.">
         <g font-family="system-ui,sans-serif" font-size="11" fill="var(--faint)">
@@ -356,7 +355,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
       <figcaption>Sort every encounter by the chance the model gave it and split into ten equal slices. Each dot is one slice: its average predicted chance against how many actually came back. The dots sit on the diagonal, running a little confident only at the very top.</figcaption>
     </figure>
 
-    <h3>It ranks above the bar</h3>
+    <h3>Precision-Recall (PR AUC)</h3>
     <figure>
         <svg viewBox="0 0 700 430" role="img" aria-label="Precision against recall: the content model at area 0.4820 stays above the running rate at 0.4212, and both stay above the base-rate floor at 0.3079.">
         <g font-family="system-ui,sans-serif" font-size="11" fill="var(--faint)">
@@ -393,7 +392,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
       <figcaption>Precision against recall. The content model stays above the training-free running rate at almost every recall, and both clear the base-rate floor. The gap between the solid lines is what the sound of the tracks adds.</figcaption>
     </figure>
 
-    <h3>It reads each listener</h3>
+    <h3>Prediction vs Actual, per Listener</h3>
     <figure>
         <svg viewBox="0 0 700 430" role="img" aria-label="Each listener plotted by the model average predicted call against their real return rate; across 1,301 listeners the two track closely, correlation 0.74.">
         <g font-family="system-ui,sans-serif" font-size="11" fill="var(--faint)">
@@ -1741,7 +1740,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
       </table>
     </div>
 
-    <h3>It sorts within a listener</h3>
+    <h3>Ranking Within a Listener</h3>
     <figure>
         <svg viewBox="0 0 700 240" role="img" aria-label="The half of a listener tracks the model ranked higher came back 41% of the time against 33% for the lower half.">
         <g font-family="system-ui,sans-serif">
