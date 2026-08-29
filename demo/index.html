@@ -301,7 +301,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
           <tr><td>all</td><td class="num">0.3079</td><td class="num">0.4212</td><td class="num win-cell">0.4820</td><td class="num">+0.061</td></tr>
           <tr><td>cold user, no history</td><td class="num">0.2898</td><td class="num">0.3776</td><td class="num win-cell">0.4224</td><td class="num">+0.045</td></tr>
           <tr><td>unfamiliar genre</td><td class="num">0.2860</td><td class="num">0.3706</td><td class="num win-cell">0.4379</td><td class="num">+0.067</td></tr>
-          <tr><td>new neighborhood</td><td class="num">0.3064</td><td class="num">0.3730</td><td class="num win-cell">0.4457</td><td class="num">+0.073</td></tr>
+          <tr><td>a new style for them</td><td class="num">0.3064</td><td class="num">0.3730</td><td class="num win-cell">0.4457</td><td class="num">+0.073</td></tr>
         </tbody>
       </table>
     </div>
@@ -1934,7 +1934,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     <p>The hardest baseline to beat was a two-line running count of how often each listener comes back. The winning model feeds that count into a sequence model that describes tracks by their sound, lifting the score from 0.4212 to 0.4820 at full scale. The margin, +0.061, is real, and larger than the laptop config had suggested.</p>
     <p>Why is that running count so strong? I think adoption depends mostly on the listener. Some people are picky and come back to almost nothing; others are open and come back to a lot. The running rate reads that openness straight from a person's own history, no model required. Taste and the sound of a track add to it, and they matter: audio content on its own scored 0.414, a statistical tie with the rate's 0.421. Even so, most of the signal looks like how open a listener is, and content is what adds to it.</p>
     <div class="note">
-      The demo earlier on this page walks three real listeners through the model's predictions against what they actually did. A live version, scoring a listener's history as it comes in, would be the next step.
+      The demo earlier on this page walks three real listeners through the model track by track, showing where the sound of a track improves on their listening habit. A live version, scoring a listener's history as it comes in, would be the next step.
     </div>
   </section>
 
