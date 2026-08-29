@@ -307,54 +307,6 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     </div>
     <p>These are the full-scale numbers. The model wins in every group, by a wider margin than it managed on the laptop, and all four gaps pass a paired user-bootstrap test with the 95% interval clear of zero.</p>
 
-    <h3>Prediction vs Actual</h3>
-    <figure>
-        <svg viewBox="0 0 700 430" role="img" aria-label="Calibration: the predicted chance of return against the actual return rate for ten equal slices of the cohort, sitting close to the diagonal of perfect agreement.">
-        <g font-family="system-ui,sans-serif" font-size="11" fill="var(--faint)">
-        <line x1="80" y1="380.0" x2="600" y2="380.0" stroke="var(--line)" stroke-width="1"/>
-        <text x="72" y="384.0" text-anchor="end">0%</text>
-        <text x="80.0" y="400" text-anchor="middle">0%</text>
-        <line x1="80" y1="330.0" x2="600" y2="330.0" stroke="var(--line)" stroke-width="1"/>
-        <text x="72" y="334.0" text-anchor="end">10%</text>
-        <text x="154.3" y="400" text-anchor="middle">10%</text>
-        <line x1="80" y1="280.0" x2="600" y2="280.0" stroke="var(--line)" stroke-width="1"/>
-        <text x="72" y="284.0" text-anchor="end">20%</text>
-        <text x="228.6" y="400" text-anchor="middle">20%</text>
-        <line x1="80" y1="230.0" x2="600" y2="230.0" stroke="var(--line)" stroke-width="1"/>
-        <text x="72" y="234.0" text-anchor="end">30%</text>
-        <text x="302.9" y="400" text-anchor="middle">30%</text>
-        <line x1="80" y1="180.0" x2="600" y2="180.0" stroke="var(--line)" stroke-width="1"/>
-        <text x="72" y="184.0" text-anchor="end">40%</text>
-        <text x="377.1" y="400" text-anchor="middle">40%</text>
-        <line x1="80" y1="130.0" x2="600" y2="130.0" stroke="var(--line)" stroke-width="1"/>
-        <text x="72" y="134.0" text-anchor="end">50%</text>
-        <text x="451.4" y="400" text-anchor="middle">50%</text>
-        <line x1="80" y1="80.0" x2="600" y2="80.0" stroke="var(--line)" stroke-width="1"/>
-        <text x="72" y="84.0" text-anchor="end">60%</text>
-        <text x="525.7" y="400" text-anchor="middle">60%</text>
-        <line x1="80" y1="30.0" x2="600" y2="30.0" stroke="var(--line)" stroke-width="1"/>
-        <text x="72" y="34.0" text-anchor="end">70%</text>
-        <text x="600.0" y="400" text-anchor="middle">70%</text>
-        </g>
-        <line x1="80.0" y1="380.0" x2="600.0" y2="30.0" stroke="var(--line-strong)" stroke-width="1.5" stroke-dasharray="5 5"/>
-        <text x="540.6" y="40.0" font-family="system-ui,sans-serif" font-size="12" fill="var(--faint)" text-anchor="end">perfect agreement</text>
-        <polyline points="155.3,326.2 209.6,287.9 241.3,269.8 268.2,252.6 294.0,240.1 321.0,225.2 351.1,211.7 387.7,190.6 438.9,165.4 566.4,90.6" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
-        <circle cx="155.3" cy="326.2" r="4.5" fill="var(--accent)"/>
-        <circle cx="209.6" cy="287.9" r="4.5" fill="var(--accent)"/>
-        <circle cx="241.3" cy="269.8" r="4.5" fill="var(--accent)"/>
-        <circle cx="268.2" cy="252.6" r="4.5" fill="var(--accent)"/>
-        <circle cx="294.0" cy="240.1" r="4.5" fill="var(--accent)"/>
-        <circle cx="321.0" cy="225.2" r="4.5" fill="var(--accent)"/>
-        <circle cx="351.1" cy="211.7" r="4.5" fill="var(--accent)"/>
-        <circle cx="387.7" cy="190.6" r="4.5" fill="var(--accent)"/>
-        <circle cx="438.9" cy="165.4" r="4.5" fill="var(--accent)"/>
-        <circle cx="566.4" cy="90.6" r="4.5" fill="var(--accent)"/>
-        <text x="340.0" y="422" font-family="system-ui,sans-serif" font-size="13" fill="var(--text)" text-anchor="middle">chance the model predicted</text>
-        <text x="24" y="205.0" font-family="system-ui,sans-serif" font-size="13" fill="var(--text)" text-anchor="middle" transform="rotate(-90 24 205.0)">how often they came back</text>
-        </svg>
-      <figcaption>Sort every encounter by the chance the model gave it and split into ten equal slices. Each dot is one slice: its average predicted chance against how many actually came back. The dots sit on the diagonal, running a little confident only at the very top.</figcaption>
-    </figure>
-
     <h3>Precision-Recall (PR AUC)</h3>
     <figure>
         <svg viewBox="0 0 700 430" role="img" aria-label="Precision against recall: the content model at area 0.4820 stays above the running rate at 0.4212, and both stay above the base-rate floor at 0.3079.">
@@ -1792,6 +1744,8 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
   .demo-controls button:disabled{opacity:.45; cursor:default}
   .demo-score{font-size:.95rem; color:var(--text)}
   .demo-score b{font-variant-numeric:tabular-nums; color:var(--accent)}
+  .demo-speed-l{font-size:.9rem; color:var(--faint); display:inline-flex; align-items:center; gap:.4rem}
+  .demo-speed-l select{font:inherit; font-size:.9rem; padding:.35rem .5rem; border-radius:8px; background:var(--surface); color:var(--text); border:1px solid var(--line-strong)}
   .demo canvas{width:100%; height:auto; display:block}
   @media (prefers-reduced-motion:reduce){
     .demo-card,.demo-bar>span{transition:none}
@@ -1815,6 +1769,14 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
         <button id="demo-reveal">Reveal</button>
         <button id="demo-next" class="ghost" disabled>Next track</button>
         <button id="demo-auto" class="ghost">Auto play</button>
+        <button id="demo-reset" class="ghost">Reset</button>
+        <label class="demo-speed-l">Speed
+          <select id="demo-speed">
+            <option value="2200">Slow</option>
+            <option value="1400" selected>Normal</option>
+            <option value="700">Fast</option>
+          </select>
+        </label>
       </div>
       <div class="demo-score">Better call than the average: <b id="demo-hits">0</b> of <b id="demo-n">0</b> so far.</div>
 
@@ -1824,7 +1786,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
       </figure>
     </div>
 
-    <div class="note">This is the between-listener signal from the Results seen up close. The model gauges how often each listener comes back and shapes every call around it, so it beats the average roughly nine times in ten for the picky listener and three in four for the open one. The fifty-fifty listener is the honest limit: when someone returns to about half of what they meet, no model can call a single track, and the line sits near the coin. Correct here means the model's probability was closer to what happened than betting the cohort average every time, which rewards a well-judged chance rather than a hard yes or no.</div>
+    <div class="note">Correct means the model's predicted chance came out closer to what happened than always guessing the average. Because the model reads how open each listener is, it beats that guess about nine times in ten for the picky listener and three in four for the open one.</div>
 
     <script>
 (function(){
@@ -1835,7 +1797,8 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
   var card=$('demo-card'), meta=$('demo-meta'), song=$('demo-song'), artist=$('demo-artist'),
       pct=$('demo-pct'), fill=$('demo-fill'), avg=$('demo-avg'), verdict=$('demo-verdict'),
       revealBtn=$('demo-reveal'), nextBtn=$('demo-next'), autoBtn=$('demo-auto'),
-      hitsEl=$('demo-hits'), nEl=$('demo-n'), tabs=$('demo-tabs'), cv=$('demo-canvas');
+      hitsEl=$('demo-hits'), nEl=$('demo-n'), tabs=$('demo-tabs'), cv=$('demo-canvas'),
+      resetBtn=$('demo-reset'), speedSel=$('demo-speed');
 
   L.forEach(function(l,i){
     var b=document.createElement('button'); b.className='demo-tab'; b.textContent=l.label;
@@ -1890,17 +1853,14 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
   }
 
   function stopAuto(){ if(timer){ clearInterval(timer); timer=null; autoBtn.textContent='Auto play'; autoBtn.classList.add('ghost'); } }
-  function toggleAuto(){
-    if(timer){ stopAuto(); return; }
-    autoBtn.textContent='Stop'; autoBtn.classList.remove('ghost');
-    var step=function(){ if(!revealed){ reveal(); } else { next(); } };
-    timer=setInterval(step, 1500);
-  }
+  function step(){ if(!revealed){ reveal(); } else { next(); } }
+  function startAuto(){ autoBtn.textContent='Stop'; autoBtn.classList.remove('ghost'); timer=setInterval(step, +speedSel.value); }
+  function toggleAuto(){ if(timer){ stopAuto(); } else { startAuto(); } }
 
   function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || '#888'; }
   function draw(){
     var w=cv.width, h=cv.height, ctx=cv.getContext('2d');
-    var padL=54, padR=16, padT=16, padB=34;
+    var padL=64, padR=16, padT=16, padB=34;
     ctx.clearRect(0,0,w,h);
     var accent=css('--accent'), faint=css('--faint'), line=css('--line'), text=css('--text');
     var x0=padL, x1=w-padR, y0=padT, y1=h-padB;
@@ -1916,6 +1876,8 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     // axis labels
     ctx.fillStyle=text; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
     ctx.fillText('tracks revealed', (x0+x1)/2, h-8);
+    ctx.save(); ctx.translate(14,(y0+y1)/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center';
+    ctx.fillText('prediction success rate', 0, 0); ctx.restore();
     // line
     var total=tracks().length;
     var xv=function(k){ return x0 + (total<=1?0:(k/(total-1)))*(x1-x0); };
@@ -1931,6 +1893,8 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
   revealBtn.onclick=function(){ stopAuto(); reveal(); };
   nextBtn.onclick=function(){ stopAuto(); next(); };
   autoBtn.onclick=toggleAuto;
+  resetBtn.onclick=function(){ setListener(li); };
+  speedSel.onchange=function(){ if(timer){ clearInterval(timer); timer=setInterval(step, +speedSel.value); } };
   var tg=$('tg'); if(tg){ tg.addEventListener('click', function(){ setTimeout(draw,30); }); }
   setListener(0);
 })();
