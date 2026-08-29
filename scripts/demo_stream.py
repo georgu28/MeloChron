@@ -36,13 +36,15 @@ from melochron.adoption.train import Corpus, Examples
 COLUMNS = ("user_code", "track_code", "encounter_ts", "encounter_pos", "recur_pos", "recur_ts")
 BASE = 0.3079
 
-# (user_code, label, role) - three listeners spanning the openness range, since how
-# open a listener is drives most of the prediction. The open enthusiast is also the
-# rightmost highlighted dot in the Results scatter.
+# (user_code, label, role) - three listeners where the sound of the track improves on
+# the in-context running rate the model builds on. Content helps most where the running
+# rate is a weak or biased guide: a picky listener (rate biased up by the prior), a
+# cold-start listener (held out of training), and an engaged listener the rate
+# under-estimates (content lifts the call up).
 TARGETS = [
     (36791, "A picky listener", "picky"),
-    (5820, "A fifty-fifty listener", "fifty"),
-    (50465, "An open enthusiast", "open"),
+    (105148, "A cold-start listener", "cold"),
+    (59703, "An engaged listener", "engaged"),
 ]
 
 
@@ -144,20 +146,22 @@ def main(argv: list[str] | None = None) -> int:
             stream.append({
                 "artist": artist,
                 "song": song,
-                "p": round(float(prob[i]), 3),
+                "rate": round(float(ic_cohort[i]), 3),  # the running rate the model starts from
+                "p": round(float(prob[i]), 3),           # the model's call: rate + content
                 "ret": bool(label[i]),
             })
-        p_all, l_all = prob[m], label[m].astype(float)
-        beats = float(((p_all - l_all) ** 2 < (BASE - l_all) ** 2).mean())
+        p_all, l_all, r_all = prob[m], label[m].astype(float), ic_cohort[m]
+        beats = float(((p_all - l_all) ** 2 < (r_all - l_all) ** 2).mean())  # content beats the rate
         out["listeners"].append({
             "label": lbl,
             "role": role,
             "return_rate": round(float(label[m].mean()), 3),
+            "mean_rate": round(float(r_all.mean()), 3),
             "n_total": int(m.sum()),
-            "beats_average": round(beats, 3),
+            "beats_rate": round(beats, 3),
             "tracks": stream,
         })
-        print(f"{lbl}: {len(stream)} tracks, rate {label[m].mean():.2f}, beats-average {beats:.1%}")
+        print(f"{lbl}: {len(stream)} tracks, rate {label[m].mean():.2f}, beats-running-rate {beats:.1%}")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(out, indent=2), encoding="utf-8")

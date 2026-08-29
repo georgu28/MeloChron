@@ -1711,8 +1711,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
 
   <section id="demo">
     <h2 class="section-title">Demo</h2>
-    <p>Pick a listener and walk through the tracks they met for the first time. The model makes its call before you see what happened, and it turns green when that call landed closer to reality than simply betting the cohort average of 31%, red when it did not. Most of what the model is doing is reading how open the listener is: for someone who leans clearly it is confidently right, and for a genuine fifty-fifty listener any single track is a coin toss.</p>
-
+    <p>Pick a listener and step through the tracks they met for the first time. The model starts from the listener's habit so far, their running return rate, and adds a nudge for how the track sounds. The card turns green when that nudge moved the call closer to what actually happened. The question is whether the sound of a track improves on the listener's habit alone.</p>
   <style>
   :root{ --good:#157f3c; --good-bg:#e8f4ec; --neg-bg:#f8eae7; }
   @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ --good:#4cc98a; --good-bg:#15241c; --neg-bg:#2a1b19; } }
@@ -1729,38 +1728,42 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
   .demo-meta{font-size:.78rem; letter-spacing:.05em; text-transform:uppercase; color:var(--faint)}
   .demo-song{font-size:1.35rem; font-weight:700; letter-spacing:-.01em; margin:.15rem 0 .05rem; text-wrap:balance}
   .demo-artist{font-size:1rem; color:var(--text)}
-  .demo-gauge{margin:1rem 0 .3rem}
-  .demo-gauge-top{display:flex; justify-content:space-between; align-items:baseline; font-size:.85rem; color:var(--faint)}
-  .demo-gauge-top b{font-size:1.15rem; color:var(--text); font-variant-numeric:tabular-nums}
-  .demo-bar{position:relative; height:14px; background:var(--bg); border:1px solid var(--line); border-radius:999px; overflow:hidden}
-  .demo-bar>span{display:block; height:100%; width:0; background:var(--accent); transition:width .5s ease}
-  .demo-avg{position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--faint)}
-  .demo-verdict{margin-top:.9rem; font-size:1rem; min-height:1.5em; color:var(--text)}
+  .demo-gauge{margin:1.05rem 0 .3rem}
+  .demo-gauge-top{display:flex; justify-content:space-between; align-items:baseline; font-size:.85rem; color:var(--faint); gap:1rem; flex-wrap:wrap}
+  .demo-gauge-top b{color:var(--text); font-variant-numeric:tabular-nums}
+  .demo-gauge-top .mv{font-size:1.15rem; color:var(--accent)}
+  .demo-bar{position:relative; height:16px; background:var(--bg); border:1px solid var(--line); border-radius:999px; overflow:visible}
+  .demo-fill{display:block; height:100%; width:0; background:var(--accent); border-radius:999px; transition:width .5s ease}
+  .demo-ratemark{position:absolute; top:-5px; bottom:-5px; width:2px; background:var(--faint)}
+  .demo-ratemark::after{content:"habit"; position:absolute; top:-16px; left:50%; transform:translateX(-50%);
+    font-size:.62rem; letter-spacing:.03em; color:var(--faint); white-space:nowrap}
+  .demo-verdict{margin-top:1.1rem; font-size:1rem; min-height:1.5em; color:var(--text)}
   .demo-verdict b.good{color:var(--good)} .demo-verdict b.bad{color:var(--neg)}
-  .demo-controls{display:flex; flex-wrap:wrap; gap:.6rem}
+  .demo-controls{display:flex; flex-wrap:wrap; gap:.6rem; align-items:center}
   .demo-controls button{font:inherit; font-size:.92rem; padding:.5rem .95rem; border-radius:8px; cursor:pointer;
     background:var(--accent); color:var(--bg); border:1px solid var(--accent)}
   .demo-controls button.ghost{background:var(--surface); color:var(--text); border-color:var(--line-strong)}
   .demo-controls button:disabled{opacity:.45; cursor:default}
+  .demo-speed-l{font-size:.9rem; color:var(--faint); display:inline-flex; align-items:center; gap:.4rem; margin-left:auto}
+  .demo-speed-l select{font:inherit; font-size:.9rem; padding:.35rem .5rem; border-radius:8px; background:var(--surface); color:var(--text); border:1px solid var(--line-strong)}
   .demo-score{font-size:.95rem; color:var(--text)}
   .demo-score b{font-variant-numeric:tabular-nums; color:var(--accent)}
-  .demo-speed-l{font-size:.9rem; color:var(--faint); display:inline-flex; align-items:center; gap:.4rem}
-  .demo-speed-l select{font:inherit; font-size:.9rem; padding:.35rem .5rem; border-radius:8px; background:var(--surface); color:var(--text); border:1px solid var(--line-strong)}
   .demo canvas{width:100%; height:auto; display:block}
-  @media (prefers-reduced-motion:reduce){
-    .demo-card,.demo-bar>span{transition:none}
-  }
+  @media (prefers-reduced-motion:reduce){ .demo-card,.demo-fill{transition:none} }
   </style>
     <div class="demo" id="demo-app">
       <div class="demo-tabs" id="demo-tabs" role="tablist" aria-label="Choose a listener"></div>
 
       <div class="demo-card" id="demo-card">
-        <div class="demo-meta" id="demo-meta">track 1 of 32</div>
+        <div class="demo-meta" id="demo-meta"></div>
         <div class="demo-song" id="demo-song"></div>
         <div class="demo-artist" id="demo-artist"></div>
         <div class="demo-gauge">
-          <div class="demo-gauge-top"><span>the model's call: chance they come back</span><b id="demo-pct"></b></div>
-          <div class="demo-bar"><span id="demo-fill"></span><i class="demo-avg" id="demo-avg" title="cohort average, 31%"></i></div>
+          <div class="demo-gauge-top">
+            <span>habit <b id="demo-rate"></b> plus sound <b id="demo-nudge"></b></span>
+            <span>model says <b class="mv" id="demo-pct"></b></span>
+          </div>
+          <div class="demo-bar"><span class="demo-fill" id="demo-fill"></span><i class="demo-ratemark" id="demo-ratemark"></i></div>
         </div>
         <div class="demo-verdict" id="demo-verdict" aria-live="polite"></div>
       </div>
@@ -1768,8 +1771,8 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
       <div class="demo-controls">
         <button id="demo-reveal">Reveal</button>
         <button id="demo-next" class="ghost" disabled>Next track</button>
-        <button id="demo-auto" class="ghost">Auto play</button>
         <button id="demo-reset" class="ghost">Reset</button>
+        <button id="demo-auto" class="ghost">Auto play</button>
         <label class="demo-speed-l">Speed
           <select id="demo-speed">
             <option value="1400">Slow</option>
@@ -1778,27 +1781,28 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
           </select>
         </label>
       </div>
-      <div class="demo-score">Better call than the average: <b id="demo-hits">0</b> of <b id="demo-n">0</b> so far.</div>
+      <div class="demo-score">Content improved on the habit: <b id="demo-hits">0</b> of <b id="demo-n">0</b> so far.</div>
 
       <figure style="margin:.4rem 0 0">
-        <canvas id="demo-canvas" width="700" height="280" role="img" aria-label="A running share of tracks on which the model beat the average guess, updating as you reveal each outcome."></canvas>
-        <figcaption>The share of revealed tracks where the model beat the average guess, updating as you go. The dashed line at 50% is a coin flip.</figcaption>
+        <canvas id="demo-canvas" width="700" height="280" role="img" aria-label="A running share of tracks where the sound of the track improved on the listener's habit, updating as you reveal each outcome."></canvas>
+        <figcaption>The share of tracks where the sound of the track moved the call closer to what happened than the listener's habit alone. Above the dashed 50% line, content is helping.</figcaption>
       </figure>
     </div>
 
-    <div class="note">Correct means the model's predicted chance came out closer to what happened than always guessing the average. Because the model reads how open each listener is, it beats that guess about nine times in ten for the picky listener and three in four for the open one.</div>
+    <div class="note">Content earns its keep when the habit is a weak guide. It pulls the picky and cold-start calls down, correcting a running rate that thin history has left too high, and it lifts the engaged listener up where the rate under-rates them. When a listener already returns to almost everything, the habit alone is hard to beat and content adds little.</div>
 
     <script>
 (function(){
-  var DATA = {"base_rate": 0.3079, "listeners": [{"label": "An open enthusiast", "role": "open", "return_rate": 0.76, "n_total": 1474, "beats_average": 0.753, "tracks": [{"artist": "Klaxons", "song": "Surfing the Void", "p": 0.289, "ret": false}, {"artist": "Placebo", "song": "Taste in Men", "p": 0.352, "ret": true}, {"artist": "Tamara Gachechiladze", "song": "Keep The Faith", "p": 0.391, "ret": true}, {"artist": "Nickelback", "song": "Song On Fire", "p": 0.333, "ret": true}, {"artist": "Linkin Park", "song": "Roads Untraveled", "p": 0.389, "ret": true}, {"artist": "Paramore", "song": "Caught in the Middle", "p": 0.371, "ret": true}, {"artist": "Story of the Year", "song": "Bang Bang", "p": 0.518, "ret": true}, {"artist": "Poets of the Fall", "song": "Moonlight Kissed", "p": 0.468, "ret": true}, {"artist": "The Rasmus", "song": "Crystalline", "p": 0.596, "ret": true}, {"artist": "U2", "song": "Get Out Of Your Own Way", "p": 0.438, "ret": true}, {"artist": "Hollywood Undead", "song": "Ghost Beach", "p": 0.405, "ret": true}, {"artist": "Britney Spears", "song": "I Run Away", "p": 0.549, "ret": true}, {"artist": "The Chainsmokers", "song": "You Owe Me", "p": 0.567, "ret": false}, {"artist": "Theory of a Deadman", "song": "Wicked Game", "p": 0.667, "ret": false}, {"artist": "Ryan O'Shaughnessy", "song": "Together", "p": 0.569, "ret": true}, {"artist": "Jeremy Soule", "song": "Wind From the Depths", "p": 0.53, "ret": false}, {"artist": "The Vines", "song": "1969", "p": 0.57, "ret": false}, {"artist": "Lenny Kravitz", "song": "5 More Days 'til Summer", "p": 0.472, "ret": true}, {"artist": "The All-American Rejects", "song": "One More Sad Song", "p": 0.31, "ret": true}, {"artist": "Blindside", "song": "Pitiful", "p": 0.521, "ret": true}, {"artist": "The Sounds", "song": "Seven Days a Week", "p": 0.643, "ret": true}, {"artist": "The Prodigy", "song": "Resonate", "p": 0.684, "ret": true}, {"artist": "Finger Eleven", "song": "Thousand Mile Wish", "p": 0.538, "ret": true}, {"artist": "Celldweller", "song": "The Last Firstborn", "p": 0.646, "ret": true}, {"artist": "Anastacia", "song": "Where Do I Belong", "p": 0.608, "ret": true}, {"artist": "Kanye West", "song": "We Don't Care", "p": 0.843, "ret": false}, {"artist": "Alphaville", "song": "Lies", "p": 0.801, "ret": true}, {"artist": "Taproot", "song": "Calling", "p": 0.619, "ret": true}, {"artist": "LCD Soundsystem", "song": "Too Much Love", "p": 0.609, "ret": false}, {"artist": "The Kooks", "song": "Ooh La", "p": 0.578, "ret": true}, {"artist": "Heart", "song": "Who Will You Run To", "p": 0.585, "ret": false}, {"artist": "Bullet for My Valentine", "song": "Spit You Out", "p": 0.609, "ret": false}]}, {"label": "A picky listener", "role": "picky", "return_rate": 0.097, "n_total": 3106, "beats_average": 0.898, "tracks": [{"artist": "Ed Sheeran", "song": "Perfect", "p": 0.368, "ret": false}, {"artist": "Breaking Benjamin", "song": "Dance With The Devil", "p": 0.15, "ret": false}, {"artist": "Kasabian", "song": "Good Fight", "p": 0.171, "ret": false}, {"artist": "Sundara Karma", "song": "EXPLORE", "p": 0.134, "ret": false}, {"artist": "Enigma", "song": "Fata Morgana", "p": 0.125, "ret": false}, {"artist": "Carpenters", "song": "Solitaire", "p": 0.075, "ret": false}, {"artist": "Jay & The Americans", "song": "Come A Little Bit Closer", "p": 0.103, "ret": false}, {"artist": "Thee Oh Sees", "song": "The Dream", "p": 0.055, "ret": false}, {"artist": "Sara Bareilles", "song": "King of Anything", "p": 0.196, "ret": true}, {"artist": "Kylie Minogue", "song": "In Your Eyes", "p": 0.132, "ret": false}, {"artist": "Tove Lo", "song": "9th of october", "p": 0.107, "ret": false}, {"artist": "Pale Waves", "song": "My Obsession", "p": 0.066, "ret": false}, {"artist": "The Wombats", "song": "Cheetah Tongue", "p": 0.064, "ret": false}, {"artist": "David Bowie", "song": "Love Is Lost", "p": 0.045, "ret": false}, {"artist": "Khalid", "song": "Therapy", "p": 0.185, "ret": false}, {"artist": "Ashanti", "song": "Happy", "p": 0.083, "ret": false}, {"artist": "Raphael Saadiq", "song": "Still Ray", "p": 0.064, "ret": false}, {"artist": "MisterWives", "song": "Oh Love", "p": 0.114, "ret": false}, {"artist": "Maren Morris", "song": "I Could Use a Love Song", "p": 0.092, "ret": false}, {"artist": "Supertramp", "song": "Babaji", "p": 0.052, "ret": false}, {"artist": "Mika", "song": "Lollipop", "p": 0.078, "ret": false}, {"artist": "Allie X", "song": "Not So Bad in LA", "p": 0.091, "ret": false}, {"artist": "Hippo Campus", "song": "Passenger", "p": 0.077, "ret": false}, {"artist": "Motion City Soundtrack", "song": "Feel Like Rain", "p": 0.031, "ret": false}, {"artist": "Busted", "song": "Nineties", "p": 0.047, "ret": true}, {"artist": "The Story So Far", "song": "Take Me as You Please", "p": 0.102, "ret": false}, {"artist": "Tom Grennan", "song": "Aboard", "p": 0.06, "ret": false}, {"artist": "Ice-T", "song": "O.G. Original Gangster", "p": 0.08, "ret": false}, {"artist": "Girls Girls", "song": "Girls Girls", "p": 0.046, "ret": false}, {"artist": "Justin Timberlake", "song": "Never Again", "p": 0.082, "ret": false}, {"artist": "PJ Harvey", "song": "Rid of Me", "p": 0.055, "ret": false}, {"artist": "Alexandra Savior", "song": "Shades", "p": 0.046, "ret": false}]}, {"label": "A fifty-fifty listener", "role": "fifty", "return_rate": 0.494, "n_total": 1397, "beats_average": 0.523, "tracks": [{"artist": "Take That", "song": "New Day", "p": 0.32, "ret": true}, {"artist": "Steps", "song": "I Will Love Again", "p": 0.616, "ret": true}, {"artist": "The Aces", "song": "Baby Who", "p": 0.65, "ret": true}, {"artist": "WJSN", "song": "Miracle", "p": 0.511, "ret": false}, {"artist": "Carrie Underwood", "song": "I Just Can't Live a Lie", "p": 0.513, "ret": false}, {"artist": "Fickle Friends", "song": "Hello Hello", "p": 0.428, "ret": true}, {"artist": "Echosmith", "song": "Future Me", "p": 0.678, "ret": true}, {"artist": "Rita Ora", "song": "Anywhere", "p": 0.509, "ret": true}, {"artist": "First Aid Kit", "song": "Fireworks", "p": 0.403, "ret": true}, {"artist": "Kylie Minogue", "song": "Golden", "p": 0.783, "ret": true}, {"artist": "Kylie Minogue", "song": "Nothing to Lose", "p": 0.259, "ret": false}, {"artist": "St. Beauty", "song": "Caught", "p": 0.476, "ret": false}, {"artist": "CHVRCHES", "song": "Miracle", "p": 0.566, "ret": false}, {"artist": "Bülow", "song": "You & Jennifer", "p": 0.612, "ret": false}, {"artist": "DAY6", "song": "Sing Me", "p": 0.593, "ret": false}, {"artist": "Margaret", "song": "Lollipop", "p": 0.564, "ret": false}, {"artist": "Kero Kero Bonito", "song": "Heard A Song", "p": 0.578, "ret": true}, {"artist": "AlunaGeorge", "song": "Shallow Water", "p": 0.652, "ret": true}, {"artist": "Robyn", "song": "Between the Lines", "p": 0.668, "ret": false}, {"artist": "MAMAMOO", "song": "No More Drama", "p": 0.673, "ret": true}, {"artist": "Bananarama", "song": "Dance Music", "p": 0.762, "ret": true}, {"artist": "Halsey", "song": "Castle", "p": 0.748, "ret": true}, {"artist": "Maisie Peters", "song": "Stay Young", "p": 0.612, "ret": false}, {"artist": "Katerine Duska", "song": "Better Love", "p": 0.55, "ret": true}, {"artist": "Cher", "song": "Take Me Home", "p": 0.347, "ret": false}, {"artist": "Sara Bareilles", "song": "Love Song", "p": 0.231, "ret": false}, {"artist": "Christine and the Queens", "song": "No Harm Is Done (feat. Tunji Ige)", "p": 0.362, "ret": true}, {"artist": "Goldfrapp", "song": "Melancholy Sky", "p": 0.357, "ret": false}, {"artist": "Madonna", "song": "This Used to Be My Playground", "p": 0.433, "ret": true}, {"artist": "Britney Spears", "song": "Where Are You Now", "p": 0.292, "ret": false}, {"artist": "Shakira", "song": "Underneath Your Clothes", "p": 0.304, "ret": false}, {"artist": "Delta Goodrem", "song": "Heavy", "p": 0.401, "ret": false}]}]};
-  var BASE = DATA.base_rate, L = DATA.listeners;
+  var DATA = {"base_rate": 0.3079, "listeners": [{"label": "A picky listener", "role": "picky", "return_rate": 0.097, "mean_rate": 0.175, "n_total": 3106, "beats_rate": 0.89, "tracks": [{"artist": "Ed Sheeran", "song": "Perfect", "rate": 0.369, "p": 0.368, "ret": false}, {"artist": "Breaking Benjamin", "song": "Dance With The Devil", "rate": 0.325, "p": 0.15, "ret": false}, {"artist": "Kasabian", "song": "Good Fight", "rate": 0.274, "p": 0.171, "ret": false}, {"artist": "Sundara Karma", "song": "EXPLORE", "rate": 0.245, "p": 0.134, "ret": false}, {"artist": "Enigma", "song": "Fata Morgana", "rate": 0.238, "p": 0.125, "ret": false}, {"artist": "Carpenters", "song": "Solitaire", "rate": 0.22, "p": 0.075, "ret": false}, {"artist": "Jay & The Americans", "song": "Come A Little Bit Closer", "rate": 0.207, "p": 0.103, "ret": false}, {"artist": "Thee Oh Sees", "song": "The Dream", "rate": 0.196, "p": 0.055, "ret": false}, {"artist": "Sara Bareilles", "song": "King of Anything", "rate": 0.2, "p": 0.196, "ret": true}, {"artist": "Kylie Minogue", "song": "In Your Eyes", "rate": 0.198, "p": 0.132, "ret": false}, {"artist": "Tove Lo", "song": "9th of october", "rate": 0.188, "p": 0.107, "ret": false}, {"artist": "Pale Waves", "song": "My Obsession", "rate": 0.178, "p": 0.066, "ret": false}, {"artist": "The Wombats", "song": "Cheetah Tongue", "rate": 0.169, "p": 0.064, "ret": false}, {"artist": "David Bowie", "song": "Love Is Lost", "rate": 0.164, "p": 0.045, "ret": false}, {"artist": "Khalid", "song": "Therapy", "rate": 0.161, "p": 0.185, "ret": false}, {"artist": "Ashanti", "song": "Happy", "rate": 0.156, "p": 0.083, "ret": false}, {"artist": "Raphael Saadiq", "song": "Still Ray", "rate": 0.154, "p": 0.064, "ret": false}, {"artist": "MisterWives", "song": "Oh Love", "rate": 0.151, "p": 0.114, "ret": false}, {"artist": "Maren Morris", "song": "I Could Use a Love Song", "rate": 0.144, "p": 0.092, "ret": false}, {"artist": "Supertramp", "song": "Babaji", "rate": 0.141, "p": 0.052, "ret": false}, {"artist": "Mika", "song": "Lollipop", "rate": 0.143, "p": 0.078, "ret": false}, {"artist": "Allie X", "song": "Not So Bad in LA", "rate": 0.141, "p": 0.091, "ret": false}, {"artist": "Hippo Campus", "song": "Passenger", "rate": 0.139, "p": 0.077, "ret": false}, {"artist": "Motion City Soundtrack", "song": "Feel Like Rain", "rate": 0.134, "p": 0.031, "ret": false}, {"artist": "Busted", "song": "Nineties", "rate": 0.133, "p": 0.047, "ret": true}, {"artist": "The Story So Far", "song": "Take Me as You Please", "rate": 0.134, "p": 0.102, "ret": false}, {"artist": "Tom Grennan", "song": "Aboard", "rate": 0.134, "p": 0.06, "ret": false}, {"artist": "Ice-T", "song": "O.G. Original Gangster", "rate": 0.13, "p": 0.08, "ret": false}, {"artist": "Girls Girls", "song": "Girls Girls", "rate": 0.128, "p": 0.046, "ret": false}, {"artist": "Justin Timberlake", "song": "Never Again", "rate": 0.125, "p": 0.082, "ret": false}, {"artist": "PJ Harvey", "song": "Rid of Me", "rate": 0.125, "p": 0.055, "ret": false}, {"artist": "Alexandra Savior", "song": "Shades", "rate": 0.122, "p": 0.046, "ret": false}]}, {"label": "A cold-start listener", "role": "cold", "return_rate": 0.124, "mean_rate": 0.216, "n_total": 1530, "beats_rate": 0.852, "tracks": [{"artist": "The New Pornographers", "song": "This Is The World Of The Theater", "rate": 0.369, "p": 0.205, "ret": false}, {"artist": "Clutch", "song": "Electric Worry", "rate": 0.369, "p": 0.15, "ret": false}, {"artist": "Loverboy", "song": "Turn Me Loose", "rate": 0.305, "p": 0.202, "ret": false}, {"artist": "Randy VanWarmer", "song": "Just When I Needed You Most", "rate": 0.294, "p": 0.182, "ret": false}, {"artist": "U2", "song": "Cedarwood Road", "rate": 0.277, "p": 0.163, "ret": false}, {"artist": "The Cars", "song": "Double Life", "rate": 0.255, "p": 0.091, "ret": false}, {"artist": "Black Flag", "song": "Rise Above", "rate": 0.249, "p": 0.086, "ret": false}, {"artist": "Tyler Childers", "song": "Feathered Indians", "rate": 0.244, "p": 0.146, "ret": false}, {"artist": "Cass McCombs", "song": "That's That", "rate": 0.223, "p": 0.186, "ret": false}, {"artist": "U2", "song": "Love Is All We Have Left", "rate": 0.215, "p": 0.144, "ret": true}, {"artist": "LCD Soundsystem", "song": "Losing My Edge", "rate": 0.22, "p": 0.066, "ret": false}, {"artist": "Anderson East", "song": "Girlfriend", "rate": 0.211, "p": 0.11, "ret": true}, {"artist": "Jack White", "song": "Want and Able", "rate": 0.205, "p": 0.099, "ret": false}, {"artist": "Kacey Musgraves", "song": "Slow Burn", "rate": 0.199, "p": 0.09, "ret": false}, {"artist": "Eddie Money", "song": "Take Me Home Tonight", "rate": 0.2, "p": 0.069, "ret": false}, {"artist": "Paul McCartney", "song": "Come On To Me", "rate": 0.198, "p": 0.149, "ret": false}, {"artist": "Blondie", "song": "Picture This", "rate": 0.205, "p": 0.692, "ret": false}, {"artist": "INXS", "song": "To Look At You", "rate": 0.202, "p": 0.126, "ret": false}, {"artist": "INXS", "song": "Tiny Daggers", "rate": 0.195, "p": 0.069, "ret": false}, {"artist": "Gregory Alan Isakov", "song": "San Luis", "rate": 0.19, "p": 0.15, "ret": false}, {"artist": "R.E.M.", "song": "Pilgrimage", "rate": 0.19, "p": 0.104, "ret": false}, {"artist": "Bob Dylan", "song": "Highlands", "rate": 0.185, "p": 0.094, "ret": false}, {"artist": "Cass McCombs", "song": "Rounder", "rate": 0.182, "p": 0.219, "ret": false}, {"artist": "The Who", "song": "The Kids Are Alright", "rate": 0.178, "p": 0.056, "ret": false}, {"artist": "Elton John", "song": "The King Must Die", "rate": 0.181, "p": 0.1, "ret": false}, {"artist": "Billy Joel", "song": "Big Shot", "rate": 0.18, "p": 0.063, "ret": false}, {"artist": "The Cure", "song": "The Upstairs Room", "rate": 0.175, "p": 0.078, "ret": false}, {"artist": "Sex Pistols", "song": "God Save the Queen", "rate": 0.173, "p": 0.058, "ret": false}, {"artist": "Joni Mitchell", "song": "The Priest", "rate": 0.172, "p": 0.099, "ret": false}, {"artist": "The Selecter", "song": "Too Much Pressure", "rate": 0.169, "p": 0.058, "ret": false}, {"artist": "Weyes Blood", "song": "Diary", "rate": 0.165, "p": 0.048, "ret": false}, {"artist": "Townes Van Zandt", "song": "Nothin'", "rate": 0.164, "p": 0.089, "ret": false}]}, {"label": "An engaged listener", "role": "engaged", "return_rate": 0.599, "mean_rate": 0.492, "n_total": 471, "beats_rate": 0.701, "tracks": [{"artist": "Tennis", "song": "Seafarer", "rate": 0.369, "p": 0.936, "ret": true}, {"artist": "Miguel", "song": "Kaleidoscope Dream", "rate": 0.397, "p": 0.823, "ret": true}, {"artist": "Dru Hill", "song": "Beauty", "rate": 0.422, "p": 0.931, "ret": true}, {"artist": "Harry Styles", "song": "Carolina", "rate": 0.426, "p": 0.291, "ret": true}, {"artist": "Al Green", "song": "Tired of Being Alone", "rate": 0.433, "p": 0.392, "ret": false}, {"artist": "Tove Styrke", "song": "Say My Name", "rate": 0.434, "p": 0.249, "ret": true}, {"artist": "Ludacris", "song": "Area Codes", "rate": 0.444, "p": 0.924, "ret": true}, {"artist": "Dua Lipa", "song": "Room for 2", "rate": 0.46, "p": 0.929, "ret": true}, {"artist": "Lana Del Rey", "song": "Heroin", "rate": 0.473, "p": 0.918, "ret": true}, {"artist": "Robyn", "song": "Stars 4-Ever", "rate": 0.488, "p": 0.954, "ret": true}, {"artist": "Melanie Fiona", "song": "It Kills Me", "rate": 0.497, "p": 0.87, "ret": true}, {"artist": "A BOOGIE WIT DA HOODIE", "song": "Say A'", "rate": 0.511, "p": 0.916, "ret": true}, {"artist": "Madonna", "song": "I Love New York", "rate": 0.508, "p": 0.561, "ret": false}, {"artist": "Sabrina Claudio", "song": "Unravel Me", "rate": 0.501, "p": 0.51, "ret": false}, {"artist": "Frank Ocean", "song": "Provider", "rate": 0.488, "p": 0.626, "ret": true}, {"artist": "BROCKHAMPTON", "song": "ZIPPER", "rate": 0.485, "p": 0.552, "ret": true}, {"artist": "BROCKHAMPTON", "song": "GOLD", "rate": 0.487, "p": 0.631, "ret": true}, {"artist": "Sasha Sloan", "song": "Ready Yet", "rate": 0.499, "p": 0.94, "ret": false}, {"artist": "St. Beauty", "song": "Not Discuss It", "rate": 0.508, "p": 0.946, "ret": false}, {"artist": "Justin Timberlake", "song": "Montana", "rate": 0.511, "p": 0.757, "ret": true}, {"artist": "Eve", "song": "Tambourine", "rate": 0.524, "p": 0.923, "ret": true}, {"artist": "The Neighbourhood", "song": "Flowers", "rate": 0.528, "p": 0.407, "ret": false}, {"artist": "Kacey Musgraves", "song": "Space Cowboy", "rate": 0.528, "p": 0.908, "ret": true}, {"artist": "Young Buck", "song": "Shorty Wanna Ride", "rate": 0.534, "p": 0.951, "ret": true}, {"artist": "Kanye West", "song": "Lift Yourself", "rate": 0.54, "p": 0.843, "ret": true}, {"artist": "Gorillaz", "song": "Sorcererz", "rate": 0.541, "p": 0.54, "ret": false}, {"artist": "Whitney Houston", "song": "For the Love of You", "rate": 0.535, "p": 0.495, "ret": false}, {"artist": "Britney Spears", "song": "Breathe On Me - Jaques LuCont's Thin White Duke Mix", "rate": 0.528, "p": 0.593, "ret": true}, {"artist": "Ariana Grande", "song": "pete davidson", "rate": 0.524, "p": 0.528, "ret": true}, {"artist": "Carrie Underwood", "song": "Backsliding", "rate": 0.524, "p": 0.536, "ret": true}, {"artist": "Little Mix", "song": "Joan of Arc", "rate": 0.52, "p": 0.463, "ret": false}, {"artist": "Future", "song": "Jumpin on a Jet", "rate": 0.51, "p": 0.494, "ret": false}]}]};
+  var L = DATA.listeners;
   var li=0, ti=0, revealed=false, hits=0, n=0, hist=[], timer=null;
   var $ = function(id){ return document.getElementById(id); };
   var card=$('demo-card'), meta=$('demo-meta'), song=$('demo-song'), artist=$('demo-artist'),
-      pct=$('demo-pct'), fill=$('demo-fill'), avg=$('demo-avg'), verdict=$('demo-verdict'),
-      revealBtn=$('demo-reveal'), nextBtn=$('demo-next'), autoBtn=$('demo-auto'),
-      hitsEl=$('demo-hits'), nEl=$('demo-n'), tabs=$('demo-tabs'), cv=$('demo-canvas'),
-      resetBtn=$('demo-reset'), speedSel=$('demo-speed');
+      rateEl=$('demo-rate'), nudgeEl=$('demo-nudge'), pct=$('demo-pct'), fill=$('demo-fill'),
+      ratemark=$('demo-ratemark'), verdict=$('demo-verdict'),
+      revealBtn=$('demo-reveal'), nextBtn=$('demo-next'), resetBtn=$('demo-reset'),
+      autoBtn=$('demo-auto'), speedSel=$('demo-speed'),
+      hitsEl=$('demo-hits'), nEl=$('demo-n'), tabs=$('demo-tabs'), cv=$('demo-canvas');
 
   L.forEach(function(l,i){
     var b=document.createElement('button'); b.className='demo-tab'; b.textContent=l.label;
@@ -1808,14 +1812,17 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
 
   function cur(){ return L[li].tracks[ti]; }
   function tracks(){ return L[li].tracks; }
+  function pctf(x){ return Math.round(x*100)+'%'; }
 
   function render(){
-    var t=cur();
+    var t=cur(), nudge=t.p-t.rate;
     meta.textContent='track '+(ti+1)+' of '+tracks().length;
     song.textContent=t.song; artist.textContent=t.artist;
-    pct.textContent=Math.round(t.p*100)+'%';
+    rateEl.textContent=pctf(t.rate);
+    nudgeEl.textContent=(nudge>=0?'+':'-')+Math.round(Math.abs(nudge)*100)+'%';
+    pct.textContent=pctf(t.p);
     fill.style.width=(t.p*100)+'%';
-    avg.style.left=(BASE*100)+'%';
+    ratemark.style.left=(t.rate*100)+'%';
     verdict.textContent='';
     card.classList.remove('good','bad');
     revealBtn.disabled=false; nextBtn.disabled=true;
@@ -1824,13 +1831,14 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
   function reveal(){
     if(revealed) return;
     revealed=true;
-    var t=cur(), out=t.ret?1:0;
-    var win=(t.p-out)*(t.p-out) < (BASE-out)*(BASE-out);
+    var t=cur(), out=t.ret?1:0, nudge=t.p-t.rate;
+    var win=(t.p-out)*(t.p-out) < (t.rate-out)*(t.rate-out);
     n++; if(win) hits++; hist.push(hits/n);
     card.classList.add(win?'good':'bad');
     var came = t.ret ? 'They came back.' : "They didn't come back.";
-    var judge = win ? '<b class="good">Better call than the average.</b>'
-                    : '<b class="bad">The average would have called it better.</b>';
+    var dir = nudge>=0 ? 'up' : 'down';
+    var judge = win ? '<b class="good">The sound of the track pushed the call '+dir+', closer to the truth.</b>'
+                    : '<b class="bad">The sound pushed the call the wrong way this time.</b>';
     verdict.innerHTML = came+' '+judge;
     hitsEl.textContent=hits; nEl.textContent=n;
     revealBtn.disabled=true;
@@ -1840,9 +1848,7 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     draw();
   }
 
-  function next(){
-    if(ti < tracks().length-1){ ti++; revealed=false; render(); }
-  }
+  function next(){ if(ti < tracks().length-1){ ti++; revealed=false; render(); } }
 
   function setListener(i){
     stopAuto();
@@ -1865,35 +1871,30 @@ footer{margin-top:3rem; padding-top:1.3rem; border-top:1px solid var(--line);
     var accent=css('--accent'), faint=css('--faint'), line=css('--line'), text=css('--text');
     var x0=padL, x1=w-padR, y0=padT, y1=h-padB;
     var yv=function(v){ return y1-(v)*(y1-y0); };
-    // gridlines + y labels
     ctx.font='12px system-ui,sans-serif'; ctx.textBaseline='middle';
     [0,0.25,0.5,0.75,1].forEach(function(v){
       ctx.strokeStyle=line; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x0,yv(v)); ctx.lineTo(x1,yv(v)); ctx.stroke();
       ctx.fillStyle=faint; ctx.textAlign='right'; ctx.fillText(Math.round(v*100)+'%', x0-8, yv(v));
     });
-    // coin-flip reference
     ctx.strokeStyle=faint; ctx.setLineDash([5,5]); ctx.beginPath(); ctx.moveTo(x0,yv(0.5)); ctx.lineTo(x1,yv(0.5)); ctx.stroke(); ctx.setLineDash([]);
-    // axis labels
     ctx.fillStyle=text; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
     ctx.fillText('tracks revealed', (x0+x1)/2, h-8);
     ctx.save(); ctx.translate(14,(y0+y1)/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center';
-    ctx.fillText('prediction success rate', 0, 0); ctx.restore();
-    // line
+    ctx.fillText('content improved the call', 0, 0); ctx.restore();
     var total=tracks().length;
     var xv=function(k){ return x0 + (total<=1?0:(k/(total-1)))*(x1-x0); };
     if(hist.length){
       ctx.strokeStyle=accent; ctx.lineWidth=3; ctx.beginPath();
       hist.forEach(function(v,k){ var X=xv(k), Y=yv(v); if(k===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y); });
       ctx.stroke();
-      var lastX=xv(hist.length-1), lastY=yv(hist[hist.length-1]);
-      ctx.fillStyle=accent; ctx.beginPath(); ctx.arc(lastX,lastY,4,0,7); ctx.fill();
+      ctx.fillStyle=accent; ctx.beginPath(); ctx.arc(xv(hist.length-1),yv(hist[hist.length-1]),4,0,7); ctx.fill();
     }
   }
 
   revealBtn.onclick=function(){ stopAuto(); reveal(); };
   nextBtn.onclick=function(){ stopAuto(); next(); };
-  autoBtn.onclick=toggleAuto;
   resetBtn.onclick=function(){ setListener(li); };
+  autoBtn.onclick=toggleAuto;
   speedSel.onchange=function(){ if(timer){ clearInterval(timer); timer=setInterval(step, +speedSel.value); } };
   var tg=$('tg'); if(tg){ tg.addEventListener('click', function(){ setTimeout(draw,30); }); }
   setListener(0);
