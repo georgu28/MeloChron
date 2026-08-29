@@ -138,7 +138,14 @@ def main(argv: list[str] | None = None) -> int:
         m = users == uid
         idx = np.flatnonzero(m)
         chrono = idx[np.argsort(enc_pos[idx])]  # listening order
-        picks = stride(chrono, args.per_user)
+        picks = [int(i) for i in stride(chrono, args.per_user)]
+        # Guarantee at least one track where content pushed the call UP and the listener
+        # returned, so the walk-through shows the model differentiating tracks in both
+        # directions, not just clamping a low rate down. (Picks the largest such nudge.)
+        up_ret = idx[(prob[idx] > ic_cohort[idx]) & label[idx].astype(bool)]
+        if up_ret.size and not any(prob[i] > ic_cohort[i] and label[i] for i in picks):
+            picks.append(int(up_ret[np.argmax(prob[up_ret] - ic_cohort[up_ret])]))
+            picks = sorted(set(picks), key=lambda i: int(enc_pos[i]))  # keep chronological
         stream = []
         for i in picks:
             tid = str(tracks[tc[i]])
