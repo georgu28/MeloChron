@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -148,14 +149,27 @@ def main(argv: list[str] | None = None) -> int:
         # not just clamping a low rate down. (Picks the largest such nudges.)
         want_up = GUARANTEE_UP.get(role, 1)
         up_ret = idx[(prob[idx] > ic_cohort[idx]) & label[idx].astype(bool)]
+        forced: list[int] = []
         if up_ret.size:
             have = sum(1 for i in picks if prob[i] > ic_cohort[i] and label[i])
             need = max(0, want_up - have)
             if need:
-                cand = sorted((int(i) for i in up_ret if int(i) not in picks),
-                              key=lambda i: prob[i] - ic_cohort[i], reverse=True)
-                picks.extend(cand[:need])
-                picks = sorted(set(picks), key=lambda i: int(enc_pos[i]))  # keep chronological
+                forced = sorted((int(i) for i in up_ret if int(i) not in picks),
+                                key=lambda i: prob[i] - ic_cohort[i], reverse=True)[:need]
+                picks.extend(forced)
+        # Trim back to exactly per_user so every listener shows the same count. Drop the
+        # non-unique tracks first (an artist already present elsewhere), never the forced
+        # up-and-returned ones.
+        if len(picks) > args.per_user:
+            def artist_of(i):
+                return names.get(str(tracks[tc[i]]), ("", ""))[0]
+            acount = Counter(artist_of(i) for i in picks)
+            forced_set = set(forced)
+            removable = sorted((i for i in picks if i not in forced_set),
+                               key=lambda i: (acount[artist_of(i)], int(enc_pos[i])), reverse=True)
+            drop = set(removable[: len(picks) - args.per_user])
+            picks = [i for i in picks if i not in drop]
+        picks = sorted(set(picks), key=lambda i: int(enc_pos[i]))  # keep chronological
         stream = []
         for i in picks:
             tid = str(tracks[tc[i]])
