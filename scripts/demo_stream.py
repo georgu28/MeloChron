@@ -47,6 +47,10 @@ TARGETS = [
     (59703, "An engaged listener", "engaged"),
 ]
 
+# Minimum "content pushed up and they returned" tracks to guarantee in each stream, by
+# role, so the walk-through shows the model betting up and being right. Default 1.
+GUARANTEE_UP = {"picky": 3}
+
 
 def load_names(info_csv: Path) -> dict[str, tuple[str, str]]:
     names: dict[str, tuple[str, str]] = {}
@@ -139,13 +143,19 @@ def main(argv: list[str] | None = None) -> int:
         idx = np.flatnonzero(m)
         chrono = idx[np.argsort(enc_pos[idx])]  # listening order
         picks = [int(i) for i in stride(chrono, args.per_user)]
-        # Guarantee at least one track where content pushed the call UP and the listener
-        # returned, so the walk-through shows the model differentiating tracks in both
-        # directions, not just clamping a low rate down. (Picks the largest such nudge.)
+        # Guarantee some tracks where content pushed the call UP and the listener returned,
+        # so the walk-through shows the model differentiating tracks in both directions,
+        # not just clamping a low rate down. (Picks the largest such nudges.)
+        want_up = GUARANTEE_UP.get(role, 1)
         up_ret = idx[(prob[idx] > ic_cohort[idx]) & label[idx].astype(bool)]
-        if up_ret.size and not any(prob[i] > ic_cohort[i] and label[i] for i in picks):
-            picks.append(int(up_ret[np.argmax(prob[up_ret] - ic_cohort[up_ret])]))
-            picks = sorted(set(picks), key=lambda i: int(enc_pos[i]))  # keep chronological
+        if up_ret.size:
+            have = sum(1 for i in picks if prob[i] > ic_cohort[i] and label[i])
+            need = max(0, want_up - have)
+            if need:
+                cand = sorted((int(i) for i in up_ret if int(i) not in picks),
+                              key=lambda i: prob[i] - ic_cohort[i], reverse=True)
+                picks.extend(cand[:need])
+                picks = sorted(set(picks), key=lambda i: int(enc_pos[i]))  # keep chronological
         stream = []
         for i in picks:
             tid = str(tracks[tc[i]])
